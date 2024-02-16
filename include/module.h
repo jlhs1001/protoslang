@@ -24,4 +24,7 @@ typedef struct {
 // Initialize a module.
 void initialize_module(Module* module);
 
+// Write a byte to the end of a module.
+void write_byte(Module* module, uint8_t byte);
+
 #endif //PROTOSLANG_MODULE_H
