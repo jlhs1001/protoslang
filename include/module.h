@@ -26,8 +26,15 @@ typedef struct {
     // per instruction, which would take up extra cache space and potentially
     // result in more cache misses. Instead, the line number is stored in a
     // separate array and only used when debugging.
+    // TODO: This could be optimized by using a run-length encoding scheme.
+    //  Compress this data by using the aforementioned scheme.
     int* lines;
     // The array of values in the module.
+    // TODO: Add support for a LONG_CONSTANT instruction. The current implementation
+    //  only supports 256 constants, which is not enough for a real program. However,
+    //  most modules will not use more than 256 constants, so supporting both 8-bit addressed
+    //  and 24-bit addressed constants will result in greater locality and thus greater performance
+    //  in the typical scenario.
     ValueArray constants;
 } Module;
 

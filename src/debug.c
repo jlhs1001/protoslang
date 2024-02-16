@@ -32,6 +32,12 @@ static int constant_instruction(const char* name, Module* module, int offset) {
 
 int disassemble_instruction(Module* module, uint32_t offset) {
     printf("%04d ", offset);
+    // Print the line number if the current instruction is on the same line as the previous instruction.
+    if (offset > 0 && module->lines[offset] == module->lines[offset - 1]) {
+        printf("   | ");
+    } else {
+        printf("%4d ", module->lines[offset]);
+    }
 
     uint8_t instruction = module->code[offset];
     switch (instruction) {

@@ -18,4 +18,6 @@ add_executable(slang_prototype
         src/debug.c
         include/value.h
         src/value.c
+        vm/vm.h
+        vm/vm.c
 )
