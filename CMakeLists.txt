@@ -3,4 +3,10 @@ project(protoslang C)
 
 set(CMAKE_C_STANDARD 11)
 
-add_executable(protoslang main.c)
+# Include directory for header files
+include_directories(include)
+
+# Specify the executable and its source files
+add_executable(slang_prototype
+        src/main.c
+)
