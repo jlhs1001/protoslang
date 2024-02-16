@@ -5,6 +5,7 @@ set(CMAKE_C_STANDARD 11)
 
 # Include directory for header files
 include_directories(include)
+include_directories(vm)
 
 # Specify the executable and its source files
 add_executable(slang_prototype
