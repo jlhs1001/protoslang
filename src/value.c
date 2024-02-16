@@ -32,3 +32,8 @@ void free_value_array(ValueArray* array) {
     // Reset the capacity and count
     initialize_value_array(array);
 }
+
+// Print a value to the console.
+void print_value(Value value) {
+    printf("%g", value);
+}

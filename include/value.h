@@ -19,4 +19,7 @@ void initialize_value_array(ValueArray* array);
 void write_value_array(ValueArray* array, Value value);
 void free_value_array(ValueArray* array);
 
+// Print a value to the console.
+void print_value(Value value);
+
 #endif //PROTOSLANG_VALUE_H
