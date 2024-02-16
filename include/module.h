@@ -27,4 +27,7 @@ void initialize_module(Module* module);
 // Write a byte to the end of a module.
 void write_byte(Module* module, uint8_t byte);
 
+// Free the memory used by a module.
+void free_module(Module* module);
+
 #endif //PROTOSLANG_MODULE_H

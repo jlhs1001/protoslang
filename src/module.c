@@ -3,6 +3,7 @@
 //
 
 #include "module.h"
+#include "memory.h"
 
 // Initialize a module.
 void initialize_module(Module* module) {
@@ -11,6 +12,14 @@ void initialize_module(Module* module) {
     module->count = 0;
     module->capacity = 0;
     module->code = NULL;
+}
+
+// Free the memory used by a module.
+void free_module(Module* module) {
+    // Free the array of instructions.
+    FREE_ARRAY(uint8_t, module->code, module->capacity);
+    // Reset the module's fields to their initial values.
+    initialize_module(module);
 }
 
 // Write a byte to the end of a module.
