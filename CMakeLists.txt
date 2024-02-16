@@ -14,4 +14,6 @@ add_executable(slang_prototype
         src/module.c
         include/memory.h
         src/memory.c
+        include/debug.h
+        src/debug.c
 )
