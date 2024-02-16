@@ -12,18 +12,23 @@ void initialize_module(Module* module) {
     module->count = 0;
     module->capacity = 0;
     module->code = NULL;
+
+    // Initialize the module's array of values.
+    initialize_value_array(&module->constants);
 }
 
 // Free the memory used by a module.
 void free_module(Module* module) {
     // Free the array of instructions.
     FREE_ARRAY(uint8_t, module->code, module->capacity);
+    // Free the array of values.
+    free_value_array(&module->constants);
     // Reset the module's fields to their initial values.
     initialize_module(module);
 }
 
 // Write a byte to the end of a module.
-void write_byte(Module* module, uint8_t byte) {
+void write_module(Module* module, uint8_t byte) {
     // If the module's array of instructions is full, reallocate the array to double its capacity.
     if (module->capacity < module->count + 1) {
         uint32_t old_capacity = module->capacity;

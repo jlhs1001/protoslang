@@ -2,6 +2,7 @@
 #define PROTOSLANG_MODULE_H
 
 #include "common.h"
+#include "value.h"
 
 // Each instruction has a single byte opcode.
 // This value determines the kind of instruction
@@ -19,13 +20,18 @@ typedef struct {
     uint32_t capacity;
     // The array of instructions.
     uint8_t* code;
+    // The array of values in the module.
+    ValueArray constants;
 } Module;
 
 // Initialize a module.
 void initialize_module(Module* module);
 
 // Write a byte to the end of a module.
-void write_byte(Module* module, uint8_t byte);
+void write_module(Module* module, uint8_t byte);
+
+// Add a constant value to a module.
+uint32_t add_constant(Module* module, Value value);
 
 // Free the memory used by a module.
 void free_module(Module* module);
