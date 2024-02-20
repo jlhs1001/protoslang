@@ -99,3 +99,8 @@ InterpretResult interpret(Module* module) {
     vm.ip = vm.module->code;
     return run();
 }
+
+InterpretResult interpret(const char* source) {
+    compile(source);
+    return INTERPRET_OK;
+}
