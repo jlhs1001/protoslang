@@ -45,6 +45,16 @@ int disassemble_instruction(Module* module, uint32_t offset) {
             return simple_instruction("ret", (int)offset);
         case OP_CONSTANT:
             return constant_instruction("imm", module, (int)offset);
+        case OP_ADD:
+            return simple_instruction("add", (int)offset);
+        case OP_SUBTRACT:
+            return simple_instruction("sub", (int)offset);
+        case OP_MULTIPLY:
+            return simple_instruction("mul", (int)offset);
+        case OP_DIVIDE:
+            return simple_instruction("div", (int)offset);
+        case OP_NEGATE:
+            return simple_instruction("neg", (int)offset);
         default:
             printf("Unknown opcode %d\n", instruction);
             return (int)offset + 1;

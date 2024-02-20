@@ -45,14 +45,13 @@ static InterpretResult run() {
 #ifdef DEBUG_TRACE_EXECUTION
         // Print the stack.
         printf("          ");
-
         // Loop through each value in the stack and print it.
         for (Value* slot = vm.stack; slot < vm.stack_top; slot++) {
             printf("[ ");
             print_value(*slot);
             printf(" ]");
         }
-
+        printf("\n");
         // Disassemble the current instruction.
         disassemble_instruction(vm.module, (int)(vm.ip - vm.module->code));
 #endif
@@ -65,6 +64,18 @@ static InterpretResult run() {
                 push(constant);
                 break;
             }
+            case OP_ADD:
+                BINARY_OP(+);
+                break;
+            case OP_SUBTRACT:
+                BINARY_OP(-);
+                break;
+            case OP_MULTIPLY:
+                BINARY_OP(*);
+                break;
+            case OP_DIVIDE:
+                BINARY_OP(/);
+                break;
             case OP_NEGATE:
                 // Pop a value from the stack, negate it, then push the result back onto the stack.
                 push(-pop());
@@ -80,6 +91,7 @@ static InterpretResult run() {
 
 #undef READ_BYTE
 #undef READ_CONSTANT
+#undef BINARY_OP
 }
 
 InterpretResult interpret(Module* module) {
