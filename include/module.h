@@ -9,6 +9,7 @@
 // that the VM should execute: add, sub, look up variable, etc.
 typedef enum {
     OP_RETURN,
+    OP_NEGATE,
     OP_CONSTANT
 } OpCode;
 
