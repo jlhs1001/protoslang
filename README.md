@@ -5,10 +5,10 @@ Protoslang is still in active development. The README will temporarily hold the 
 ## Expressions
 
 - [ ] Arithmetic
-  - [ ] `+`
-  - [ ] `-`
-  - [ ] `*`
-  - [ ] `/`
+  - [x] `+`
+  - [x] `-`
+  - [x] `*`
+  - [x] `/`
   - [ ] `%`
 - [ ] Comparison
   - [ ] `<`
