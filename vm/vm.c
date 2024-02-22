@@ -3,6 +3,7 @@
 #include "common.h"
 #include "debug.h"
 #include "vm.h"
+#include "compiler.h"
 
 VM vm;
 
@@ -94,13 +95,20 @@ static InterpretResult run() {
 #undef BINARY_OP
 }
 
-InterpretResult interpret(Module* module) {
-    vm.module = module;
-    vm.ip = vm.module->code;
-    return run();
-}
+InterpretResult interpret(const char *source) {
+    Module module;
+    initialize_module(&module);
 
-InterpretResult interpret(const char* source) {
-    compile(source);
-    return INTERPRET_OK;
+    if (!compile(source, &module)) {
+        free_module(&module);
+        return INTERPRET_COMPILE_ERROR;
+    }
+
+    vm.module = &module;
+    vm.ip = vm.module->code;
+
+    InterpretResult result = run();
+
+    free_module(&module);
+    return result;
 }

@@ -197,7 +197,7 @@ static Token string() {
 }
 
 Token lex_token() {
-    // skip an leading whitespace
+    // skip a leading whitespace
     skip_whitespace();
     lexer.start = lexer.current;
     if (is_at_end()) return make_token(TK_EOF);

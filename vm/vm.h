@@ -36,7 +36,7 @@ void initialize_vm();
 void free_vm();
 
 // Interpret a module.
-InterpretResult interpret(Module* module);
+InterpretResult interpret(const char *source);
 
 // push a value onto the stack
 void push(Value value);

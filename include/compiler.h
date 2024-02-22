@@ -1,6 +1,8 @@
 #ifndef PROTOSLANG_COMPILER_H
 #define PROTOSLANG_COMPILER_H
 
-void compile(const char* source);
+#include "vm.h"
+
+bool compile(const char *source, Module *module);
 
 #endif //PROTOSLANG_COMPILER_H

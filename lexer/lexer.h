@@ -45,6 +45,6 @@ typedef struct {
 void initialize_lexer(const char* source);
 
 // scan the next token from the source code and return a Token object
-Token scan_token();
+Token lex_token();
 
 #endif //PROTOSLANG_LEXER_H
