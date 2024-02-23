@@ -6,6 +6,8 @@
 #include "debug.h"
 #include "vm.h"
 
+// TODO: Investigate error recovery strategies
+
 #define MAX_LINE_LENGTH 1024
 
 static void repl() {

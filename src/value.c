@@ -35,5 +35,25 @@ void free_value_array(ValueArray* array) {
 
 // Print a value to the console.
 void print_value(Value value) {
-    printf("%g", value);
+    switch (value.type) {
+        case TYPE_BOOL:
+            printf(AS_BOOL(value) ? "true" : "false");
+            break;
+        case TYPE_NIL:
+            printf("nil");
+            break;
+        case TYPE_NUMBER:
+            printf("%g", AS_NUMBER(value));
+            break;
+    }
+}
+
+bool values_equal(Value a, Value b) {
+    if (a.type != b.type) return false;
+    switch (a.type) {
+        case TYPE_BOOL: return AS_BOOL(a) == AS_BOOL(b);
+        case TYPE_NIL: return true;
+        case TYPE_NUMBER: return AS_NUMBER(a) == AS_NUMBER(b);
+        default: return false; // Unreachable.
+    }
 }

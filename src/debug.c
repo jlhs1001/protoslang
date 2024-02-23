@@ -3,7 +3,7 @@
 #include "debug.h"
 
 void disassemble_module(Module* module, const char* name) {
-    printf("== %s ==\n", name);
+    printf("=== %s ===\n", name);
 
     for (uint32_t offset = 0; offset < module->count;) {
         offset = disassemble_instruction(module, offset);
@@ -45,6 +45,18 @@ int disassemble_instruction(Module* module, uint32_t offset) {
             return simple_instruction("ret", (int)offset);
         case OP_CONSTANT:
             return constant_instruction("imm", module, (int)offset);
+        case OP_NIL:
+            return simple_instruction("nil", (int)offset);
+        case OP_TRUE:
+            return simple_instruction("tru", (int)offset);
+        case OP_FALSE:
+            return simple_instruction("fal", (int)offset);
+        case OP_EQUAL:
+            return simple_instruction("equ", (int)offset);
+        case OP_GREATER:
+            return simple_instruction("grt", (int)offset);
+        case OP_LESS:
+            return simple_instruction("les", (int)offset);
         case OP_ADD:
             return simple_instruction("add", (int)offset);
         case OP_SUBTRACT:
@@ -53,6 +65,8 @@ int disassemble_instruction(Module* module, uint32_t offset) {
             return simple_instruction("mul", (int)offset);
         case OP_DIVIDE:
             return simple_instruction("div", (int)offset);
+        case OP_NOT:
+            return simple_instruction("not", (int)offset);
         case OP_NEGATE:
             return simple_instruction("neg", (int)offset);
         default:

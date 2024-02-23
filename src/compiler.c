@@ -135,6 +135,24 @@ static void binary() {
     parse_precedence((Precedence) (rule->precedence + 1));
 
     switch (operator_type) {
+        case TK_BANG_EQUAL:
+            emit_byte_pair(OP_EQUAL, OP_NOT);
+            break;
+        case TK_EQUAL_EQUAL:
+            emit_byte(OP_EQUAL);
+            break;
+        case TK_GREATER:
+            emit_byte(OP_GREATER);
+            break;
+        case TK_GREATER_EQUAL:
+            emit_byte_pair(OP_LESS, OP_NOT);
+            break;
+        case TK_LESS:
+            emit_byte(OP_LESS);
+            break;
+        case TK_LESS_EQUAL:
+            emit_byte_pair(OP_GREATER, OP_NOT);
+            break;
         case TK_PLUS:
             emit_byte(OP_ADD);
             break;
@@ -146,6 +164,22 @@ static void binary() {
             break;
         case TK_SLASH:
             emit_byte(OP_DIVIDE);
+            break;
+        default:
+            return; // unreachable
+    }
+}
+
+static void literal() {
+    switch (parser.previous.type) {
+        case TK_FALSE:
+            emit_byte(OP_FALSE);
+            break;
+        case TK_TRUE:
+            emit_byte(OP_TRUE);
+            break;
+        case TK_NIL:
+            emit_byte(OP_NIL);
             break;
         default:
             return; // unreachable
@@ -167,7 +201,7 @@ static void emit_constant(Value value) {
 
 static void number() {
     double value = strtod(parser.previous.start, NULL);
-    emit_constant(value);
+    emit_constant(NUMBER_VAL(value));
 }
 
 static void unary() {
@@ -178,6 +212,9 @@ static void unary() {
 
     // emit the operator instruction
     switch (operator_type) {
+        case TK_BANG:
+            emit_byte(OP_NOT);
+            break;
         case TK_MINUS:
             emit_byte(OP_NEGATE);
             break;
@@ -198,31 +235,31 @@ ParseRule rules[] = {
         [TK_SEMICOLON]      = {NULL, NULL, PREC_NONE},
         [TK_SLASH]          = {NULL, binary, PREC_FACTOR},
         [TK_STAR]           = {NULL, binary, PREC_FACTOR},
-        [TK_BANG]           = {NULL, NULL, PREC_NONE},
-        [TK_BANG_EQUAL]     = {NULL, NULL, PREC_NONE},
+        [TK_BANG]           = {unary, NULL, PREC_NONE},
+        [TK_BANG_EQUAL]     = {NULL, binary, PREC_NONE},
         [TK_EQUAL]          = {NULL, NULL, PREC_NONE},
-        [TK_EQUAL_EQUAL]    = {NULL, NULL, PREC_NONE},
-        [TK_GREATER]        = {NULL, NULL, PREC_NONE},
-        [TK_GREATER_EQUAL]  = {NULL, NULL, PREC_NONE},
-        [TK_LESS]           = {NULL, NULL, PREC_NONE},
-        [TK_LESS_EQUAL]     = {NULL, NULL, PREC_NONE},
+        [TK_EQUAL_EQUAL]    = {NULL, binary, PREC_EQUALITY},
+        [TK_GREATER]        = {NULL, binary, PREC_COMPARISON},
+        [TK_GREATER_EQUAL]  = {NULL, binary, PREC_COMPARISON},
+        [TK_LESS]           = {NULL, binary, PREC_COMPARISON},
+        [TK_LESS_EQUAL]     = {NULL, binary, PREC_COMPARISON},
         [TK_IDENTIFIER]     = {NULL, NULL, PREC_NONE},
         [TK_STRING]         = {NULL, NULL, PREC_NONE},
         [TK_NUMBER]         = {number, NULL, PREC_NONE},
         [TK_AND]            = {NULL, NULL, PREC_NONE},
         [TK_CLASS]          = {NULL, NULL, PREC_NONE},
         [TK_ELSE]           = {NULL, NULL, PREC_NONE},
-        [TK_FALSE]          = {NULL, NULL, PREC_NONE},
+        [TK_FALSE]          = {literal, NULL, PREC_NONE},
         [TK_FN]             = {NULL, NULL, PREC_NONE},
         [TK_FOR]            = {NULL, NULL, PREC_NONE},
         [TK_IF]             = {NULL, NULL, PREC_NONE},
-        [TK_NIL]            = {NULL, NULL, PREC_NONE}, // TODO: Rename to TK_NULL
+        [TK_NIL]            = {literal, NULL, PREC_NONE}, // TODO: Rename to TK_NULL
         [TK_OR]             = {NULL, NULL, PREC_NONE},
         [TK_PRINTLN]        = {NULL, NULL, PREC_NONE},
         [TK_RETURN]         = {NULL, NULL, PREC_NONE},
         [TK_SUPER]          = {NULL, NULL, PREC_NONE},
         [TK_SELF]           = {NULL, NULL, PREC_NONE},
-        [TK_TRUE]           = {NULL, NULL, PREC_NONE},
+        [TK_TRUE]           = {literal, NULL, PREC_NONE},
         [TK_LET]            = {NULL, NULL, PREC_NONE},
         [TK_WHILE]          = {NULL, NULL, PREC_NONE},
         [TK_ERROR]          = {NULL, NULL, PREC_NONE},
@@ -233,6 +270,7 @@ static void parse_precedence(Precedence precedence) {
     advance();
     ParseFn prefix_rule = get_rule(parser.previous.type)->prefix;
     if (prefix_rule == NULL) {
+        // TODO: Make this error message more informative.
         error("Expected expression.");
         return;
     }

@@ -132,6 +132,7 @@ static TokenType identifier_type() {
                 switch (lexer.start[1]) {
                     case 'n': return TK_FN;
                     case 'o': return check_keyword(2, 1, "r", TK_FOR);
+                    case 'a': return check_keyword(2, 3, "lse", TK_FALSE);
                 }
             }
             break;
@@ -149,7 +150,8 @@ static TokenType identifier_type() {
                 }
             }
             break;
-        case 't': return check_keyword(1, 3, "rue", TK_TRUE);
+        case 't':
+            return check_keyword(1, 3, "rue", TK_TRUE);
         case 'w': return check_keyword(1, 4, "hile", TK_WHILE);
     }
 
@@ -162,7 +164,7 @@ static Token identifier() {
 
     while (is_alpha(peek()) || is_digit(peek())) advance();
 
-    return make_token(TK_IDENTIFIER);
+    return make_token(identifier_type());
 }
 
 static Token number() {
