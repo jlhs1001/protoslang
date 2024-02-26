@@ -11,11 +11,11 @@ Protoslang is still in active development. The README will temporarily hold the 
   - [x] `/`
   - [ ] `%`
 - [ ] Comparison
-  - [ ] `<`
-  - [ ] `>`
-  - [ ] `<=`
-  - [ ] `>=`
-  - [ ] `==`
+  - [x] `<`
+  - [x] `>`
+  - [x] `<=`
+  - [x] `>=`
+  - [x] `==`
   - [ ] `!=`
 - [ ] Logical
   - [ ] `&&`
