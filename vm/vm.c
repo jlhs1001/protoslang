@@ -1,9 +1,12 @@
 #include <stdio.h>
 #include <stdarg.h>
+#include <string.h>
 
 #include "common.h"
 #include "value.h"
 #include "debug.h"
+#include "object.h"
+#include "memory.h"
 #include "vm.h"
 #include "compiler.h"
 
@@ -29,10 +32,12 @@ static void runtime_error(const char *format, ...) {
 void initialize_vm() {
 //    vm->module = module;
     reset_stack();
+    vm.objects = NULL;
 }
 
 void free_vm() {
 //    vm->module = NULL;
+    free_objects();
 }
 
 void push(Value value) {
@@ -53,6 +58,29 @@ static Value peek(int distance) {
 
 static bool is_falsey(Value value) {
     return IS_NIL(value) || (IS_BOOL(value) && !AS_BOOL(value));
+}
+
+static void concatenate() {
+    // Get the two strings from the stack.
+    ObjString *b = AS_STRING(peek(0));
+    ObjString *a = AS_STRING(peek(1));
+
+    // determine the length of the new string
+    int length = a->length + b->length;
+
+    // allocate the appropriate amount of memory for the new string
+    char *chars = ALLOCATE(char, length + 1);
+    memcpy(chars, a->chars, a->length);
+    memcpy(chars + a->length, b->chars, b->length);
+
+    // null-terminate the new string
+    chars[length] = '\0';
+
+    // create the new string object and push it onto the stack
+    ObjString *result = take_string(chars, length);
+    pop();
+    pop();
+    push(OBJ_VAL(result));
 }
 
 static InterpretResult run() {
@@ -114,9 +142,19 @@ static InterpretResult run() {
             case OP_LESS:
                 BINARY_OP(BOOL_VAL, <);
                 break;
-            case OP_ADD:
-                BINARY_OP(NUMBER_VAL, +);
+            case OP_ADD: {
+                if (IS_STRING(peek(0)) && IS_STRING(peek(1))) {
+                    concatenate();
+                } else if (IS_NUMBER(peek(0)) && IS_NUMBER(peek(1))) {
+                    double b = AS_NUMBER(pop());
+                    double a = AS_NUMBER(pop());
+                    push(NUMBER_VAL(a + b));
+                } else {
+                    runtime_error("Operands must be two numbers or two strings.");
+                    return INTERPRET_RUNTIME_ERROR;
+                }
                 break;
+            }
             case OP_SUBTRACT:
                 BINARY_OP(NUMBER_VAL, -);
                 break;

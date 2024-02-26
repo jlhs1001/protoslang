@@ -21,6 +21,9 @@ typedef struct {
 
     // A pointer to the top of the stack.
     Value* stack_top;
+
+    // The linked list of objects in the heap.
+    Obj* objects;
 } VM;
 
 typedef enum {
@@ -28,6 +31,8 @@ typedef enum {
     INTERPRET_COMPILE_ERROR,
     INTERPRET_RUNTIME_ERROR
 } InterpretResult;
+
+extern VM vm;
 
 // Initialize a VM.
 void initialize_vm();

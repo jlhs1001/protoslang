@@ -105,7 +105,9 @@ static void emit_return() {
 }
 
 static void expression();
+
 static ParseRule *get_rule(TokenType type);
+
 static void parse_precedence(Precedence precedence);
 
 static uint8_t make_constant(Value value) {
@@ -204,6 +206,14 @@ static void number() {
     emit_constant(NUMBER_VAL(value));
 }
 
+static void string() {
+    // take the characters directly from the lexeme, and eliminate the surrounding quotes.
+    emit_constant(OBJ_VAL(copy_string(
+            parser.previous.start + 1,
+            parser.previous.length - 2
+    )));
+}
+
 static void unary() {
     TokenType operator_type = parser.previous.type;
 
@@ -244,7 +254,7 @@ ParseRule rules[] = {
         [TK_LESS]           = {NULL, binary, PREC_COMPARISON},
         [TK_LESS_EQUAL]     = {NULL, binary, PREC_COMPARISON},
         [TK_IDENTIFIER]     = {NULL, NULL, PREC_NONE},
-        [TK_STRING]         = {NULL, NULL, PREC_NONE},
+        [TK_STRING]         = {string, NULL, PREC_NONE},
         [TK_NUMBER]         = {number, NULL, PREC_NONE},
         [TK_AND]            = {NULL, NULL, PREC_NONE},
         [TK_CLASS]          = {NULL, NULL, PREC_NONE},

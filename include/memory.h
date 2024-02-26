@@ -2,6 +2,14 @@
 #define PROTOSLANG_MEMORY_H
 
 #include "common.h"
+#include "object.h"
+#include "object.h"
+
+#define ALLOCATE(type, count) \
+    (type*)reallocate(NULL, 0, sizeof(type) * (count))
+
+#define FREE(type, pointer) \
+    reallocate(pointer, sizeof(type), 0)
 
 // Grow the capacity of an array of elements of type T.
 #define GROW_CAPACITY(capacity) \
@@ -16,5 +24,6 @@
     (type*)reallocate(previous, sizeof(type) * (old_capacity), sizeof(type) * (new_capacity))
 
 void* reallocate(void* previous, size_t old_size, size_t new_size);
+void free_objects();
 
 #endif //PROTOSLANG_MEMORY_H

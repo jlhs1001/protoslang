@@ -26,4 +26,6 @@ add_executable(slang_prototype
         src/compiler.c
         lexer/lexer.c
         lexer/lexer.h
+        include/object.h
+        src/object.c
 )

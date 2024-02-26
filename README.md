@@ -31,10 +31,10 @@ Protoslang is still in active development. The README will temporarily hold the 
 
 ## Literal Values
 
-- [ ] Integers
-- [ ] Floats
+- [x] Integers
+- [x] Floats
 - [ ] Strings
-- [ ] Booleans
+- [x] Booleans
 
 ## Variables
 
