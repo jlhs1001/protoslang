@@ -28,4 +28,6 @@ add_executable(slang_prototype
         lexer/lexer.h
         include/object.h
         src/object.c
+        include/table.h
+        src/table.c
 )
