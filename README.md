@@ -20,9 +20,9 @@ Protoslang is still in active development. The README will temporarily hold the 
 - [ ] Logical
   - [ ] `&&`
   - [ ] `||`
-  - [ ] `!`
+  - [x] `!`
 - [ ] Assignment
-  - [ ] `=`
+  - [x] `=`
   - [ ] `+=`
   - [ ] `-=`
   - [ ] `*=`
@@ -39,7 +39,7 @@ Protoslang is still in active development. The README will temporarily hold the 
 ## Variables
 
 - [x] Declaration
-- [ ] Assignment
+- [x] Assignment
 
 ## Functions
 
@@ -50,5 +50,5 @@ Protoslang is still in active development. The README will temporarily hold the 
 
 ## Control Flow
 
-- [ ] If-else
+- [x] If-else
 - [ ] For

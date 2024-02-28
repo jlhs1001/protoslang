@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 #include "common.h"
 #include "compiler.h"
@@ -39,7 +40,19 @@ typedef struct {
     Precedence precedence;
 } ParseRule;
 
+typedef struct {
+    Token name;
+    int depth;
+} Local;
+
+typedef struct {
+    Local locals[UINT8_COUNT];
+    int local_count;
+    int scope_depth;
+} Compiler;
+
 Parser parser;
+Compiler *current = NULL;
 Module *compiling_module;
 
 static Module *current_module() {
@@ -113,6 +126,18 @@ static void emit_byte_pair(uint8_t byte1, uint8_t byte2) {
     emit_byte(byte2);
 }
 
+static int emit_jump(uint8_t instruction) {
+    // emit specified jump instruction
+    emit_byte(instruction);
+
+    // set placeholder bytes for the jump offset
+    emit_byte(0xff);
+    emit_byte(0xff);
+
+    // return the offset of the placeholder bytes
+    return (int)current_module()->count - 2;
+}
+
 static void emit_return() {
     emit_byte(OP_RETURN);
 }
@@ -144,6 +169,23 @@ static void end_compiler() {
         disassemble_module(current_module(), "code");
     }
 #endif
+}
+
+static void begin_scope() {
+    current->scope_depth++;
+}
+
+static void end_scope() {
+    current->scope_depth--;
+
+    // remove the local variables that are no longer in scope
+    while (current->local_count > 0 &&
+           current->locals[current->local_count - 1].depth > current->scope_depth) {
+        // TODO: This can be further optimized through the use of an instruction
+        //  that takes a number of locals to pop off the stack.
+        emit_byte(OP_POP);
+        current->local_count--;
+    }
 }
 
 static void binary(bool can_assign) {
@@ -207,6 +249,14 @@ static void expression() {
     parse_precedence(PREC_ASSIGNMENT);
 }
 
+static void block() {
+    while (!check(TK_RBRACE) && !check(TK_EOF)) {
+        declaration();
+    }
+
+    consume(TK_RBRACE, "Expected '}' after block.");
+}
+
 static void parse_precedence(Precedence precedence) {
     advance();
     ParseFn prefix_rule = get_rule(parser.previous.type)->prefix;
@@ -234,13 +284,102 @@ static uint8_t identifier_constant(Token *name) {
     return make_constant(OBJ_VAL(copy_string(name->start, name->length)));
 }
 
+static bool identifiers_equal(Token *a, Token *b) {
+    if (a->length != b->length) return false;
+    return memcmp(a->start, b->start, a->length) == 0;
+}
+
+static int resolve_local(Compiler *compiler, Token *name) {
+    // find the local variable in the scope chain
+    for (int i = compiler->local_count - 1; i >= 0; i--) {
+        Local *local = &compiler->locals[i];
+        if (identifiers_equal(name, &local->name)) {
+            if (local->depth == -1) {
+                error("Cannot read local variable in its own initializer.");
+            }
+            return i;
+        }
+    }
+
+    // assumed to be a global variable.
+    return -1;
+}
+
+static void add_local(Token name) {
+    if (current->local_count == UINT8_COUNT) {
+        // TODO: FIX FIX FIX FIX FIX FIX OH MY GOD FIX FIX FIX FIX FIX FIX
+        error("Maximum number of local variables reached.");
+        return;
+    }
+
+    Local *local = &current->locals[current->local_count++];
+    local->name = name;
+    local->depth = -1;
+}
+
+static void declare_variable() {
+    // we are in global scope if the scope depth is zero.
+    if (current->scope_depth == 0) return;
+
+    Token *name = &parser.previous;
+    for (int i = current->local_count - 1; i >= 0; i--) {
+        Local *local = &current->locals[i];
+        if (local->depth != -1 && local->depth < current->scope_depth) {
+            break;
+        }
+
+        if (identifiers_equal(name, &local->name)) {
+            // redeclaration of a variable in the same scope is disallowed.
+            error("Variable with this name already declared in this scope.");
+        }
+    }
+
+    add_local(*name);
+}
+
 static uint8_t parse_variable(const char *error_message) {
     consume(TK_IDENTIFIER, error_message);
+
+    declare_variable();
+    if (current->scope_depth > 0) return 0;
+
     return identifier_constant(&parser.previous);
 }
 
+static void mark_initialized() {
+    current->locals[current->local_count - 1].depth = current->scope_depth;
+}
+
 static void define_variable(uint8_t global) {
+    if (current->scope_depth > 0) {
+        mark_initialized();
+        return;
+    }
+
     emit_byte_pair(OP_DEFINE_GLOBAL, global);
+}
+
+static void patch_jump(int offset) {
+    // subtract two to account for the bytecode for the jump offset
+    int jump = (int)current_module()->count - offset - 2;
+
+    // TODO: upgrade compiler facilities to handle larger jumps
+    if (jump > UINT16_MAX) {
+        error("Too much code to jump over.");
+    }
+
+    // patch the jump offset
+    current_module()->code[offset] = (jump >> 8) & 0xff;
+    current_module()->code[offset + 1] = jump & 0xff;
+}
+
+static void and_(bool can_assign) {
+    int end_jump = emit_jump(OP_JUMP_IF_FALSE);
+
+    emit_byte(OP_POP);
+    parse_precedence(PREC_AND);
+
+    patch_jump(end_jump);
 }
 
 static void variable_declaration() {
@@ -303,6 +442,41 @@ static void expression_statement() {
     emit_byte(OP_POP);
 }
 
+static void if_statement() {
+    // parse expression
+    expression();
+
+    // require a left brace after the expression, but don't consume it.
+    // it will be consumed later in the statement function call.
+    if (!check(TK_LBRACE)) {
+        error("Expected '{' after 'if' condition.");
+    }
+
+    int then_jump = emit_jump(OP_JUMP_IF_FALSE);
+
+    // each statement is required to have zero stack effect
+    emit_byte(OP_POP); // discard the condition value
+
+    // parse the then clause
+    statement();
+
+    int else_jump = emit_jump(OP_JUMP);
+
+    patch_jump(then_jump);
+
+    // handle else clause if present
+    if (match(TK_ELSE)) {
+        if (!check(TK_LBRACE)) {
+            error("Expected '{' after 'if' condition.");
+        }
+        statement();
+
+        // patch the jump over the else clause
+    }
+
+    patch_jump(else_jump);
+}
+
 static void print_statement() {
     // require a left parenthesis after the 'println' keyword
     if (check(TK_LPAREN)) {
@@ -352,6 +526,12 @@ static void synchronize() {
 static void statement() {
     if (match(TK_PRINTLN)) {
         print_statement();
+    } else if (match(TK_IF)) {
+        if_statement();
+    } else if (match(TK_LBRACE)) {
+        begin_scope();
+        block();
+        end_scope();
     } else {
         expression_statement();
     }
@@ -380,9 +560,26 @@ static void emit_constant(Value value) {
     emit_byte_pair(OP_CONSTANT, make_constant(value));
 }
 
+static void initialize_compiler(Compiler *compiler) {
+    compiler->local_count = 0;
+    compiler->scope_depth = 0;
+    current = compiler;
+}
+
 static void number(bool can_assign) {
     double value = strtod(parser.previous.start, NULL);
     emit_constant(NUMBER_VAL(value));
+}
+
+static void or_(bool can_assign) {
+    int else_jump = emit_jump(OP_JUMP_IF_FALSE);
+    int end_jump = emit_jump(OP_JUMP);
+
+    patch_jump(else_jump);
+    emit_byte(OP_POP);
+
+    parse_precedence(PREC_OR);
+    patch_jump(end_jump);
 }
 
 static void string(bool can_assign) {
@@ -394,13 +591,25 @@ static void string(bool can_assign) {
 }
 
 static void named_variable(Token name, bool can_assign) {
-    uint8_t arg = identifier_constant(&name);
+    uint8_t get_op, set_op;
+    int arg = resolve_local(current, &name);
+
+    // determine the appropriate get and set instructions
+    // to use based on whether the variable is local or global.
+    if (arg != -1) {
+        get_op = OP_GET_LOCAL;
+        set_op = OP_SET_LOCAL;
+    } else {
+        arg = identifier_constant(&name);
+        get_op = OP_GET_GLOBAL;
+        set_op = OP_SET_GLOBAL;
+    }
 
     if (can_assign && match(TK_EQUAL)) {
         expression();
-        emit_byte_pair(OP_SET_GLOBAL, arg);
+        emit_byte_pair(set_op, (uint8_t)arg);
     } else {
-        emit_byte_pair(OP_GET_GLOBAL, arg);
+        emit_byte_pair(get_op, (uint8_t)arg);
     }
 }
 
@@ -450,7 +659,7 @@ ParseRule rules[] = {
         [TK_IDENTIFIER]     = {variable, NULL, PREC_NONE},
         [TK_STRING]         = {string, NULL, PREC_NONE},
         [TK_NUMBER]         = {number, NULL, PREC_NONE},
-        [TK_AND]            = {NULL, NULL, PREC_NONE},
+        [TK_AND]            = {NULL, and_, PREC_NONE},
         [TK_CLASS]          = {NULL, NULL, PREC_NONE},
         [TK_ELSE]           = {NULL, NULL, PREC_NONE},
         [TK_FALSE]          = {literal, NULL, PREC_NONE},
@@ -458,7 +667,7 @@ ParseRule rules[] = {
         [TK_FOR]            = {NULL, NULL, PREC_NONE},
         [TK_IF]             = {NULL, NULL, PREC_NONE},
         [TK_NIL]            = {literal, NULL, PREC_NONE}, // TODO: Rename to TK_NULL
-        [TK_OR]             = {NULL, NULL, PREC_NONE},
+        [TK_OR]             = {NULL, or_, PREC_NONE},
         [TK_PRINTLN]        = {NULL, NULL, PREC_NONE},
         [TK_RETURN]         = {NULL, NULL, PREC_NONE},
         [TK_SUPER]          = {NULL, NULL, PREC_NONE},
@@ -470,14 +679,17 @@ ParseRule rules[] = {
         [TK_EOF]            = {NULL, NULL, PREC_NONE}
 };
 
-
-
 static ParseRule *get_rule(TokenType type) {
     return &rules[type];
 }
 
 bool compile(const char *source, Module *module) {
     initialize_lexer(source);
+
+    // initialize the compiler
+    Compiler compiler;
+    initialize_compiler(&compiler);
+
     compiling_module = module;
 
     parser.had_error = false;

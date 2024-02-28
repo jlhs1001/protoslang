@@ -138,7 +138,7 @@ static TokenType identifier_type() {
             break;
         case 'i': return check_keyword(1, 1, "f", TK_IF);
         case 'l': return check_keyword(1, 2, "et", TK_LET);
-        case 'n': return check_keyword(1, 2, "ull", TK_NIL);
+        case 'n': return check_keyword(1, 3, "ull", TK_NIL);
         case 'o': return check_keyword(1, 1, "r", TK_OR);
         case 'p': return check_keyword(1, 6, "rintln", TK_PRINTLN);
         case 'r': return check_keyword(1, 5, "eturn", TK_RETURN);
@@ -146,7 +146,8 @@ static TokenType identifier_type() {
             if (lexer.current - lexer.start > 1) {
                 switch (lexer.start[1]) {
                     case 'e': return check_keyword(2, 2, "lf", TK_SELF);
-                    case 'u': return check_keyword(2, 4, "per", TK_SUPER);
+                    case 'u': return check_keyword(2, 3, "per", TK_SUPER);
+//                    case 't': return check_keyword(2, 4, "ring", TK_TYPE_STRING);
                 }
             }
             break;

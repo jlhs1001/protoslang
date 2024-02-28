@@ -16,11 +16,20 @@ typedef enum {
     OP_NOT,
     OP_NEGATE,
     OP_PRINTLN,
+
+    OP_JUMP,
+    OP_JUMP_IF_FALSE,
+
+    // type casting
+//    OP_TO_STRING,
+
     OP_CONSTANT,
     OP_NIL,
     OP_TRUE,
     OP_FALSE,
     OP_POP,
+    OP_GET_LOCAL,
+    OP_SET_LOCAL,
     OP_GET_GLOBAL,
     OP_DEFINE_GLOBAL,
     OP_SET_GLOBAL,
