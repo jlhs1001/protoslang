@@ -58,7 +58,9 @@ int disassemble_instruction(Module* module, uint32_t offset) {
         case OP_GET_GLOBAL:
             return constant_instruction("ldg", module, (int)offset);
         case OP_DEFINE_GLOBAL:
-            return constant_instruction("def", module, (int)offset);
+            return constant_instruction("stg", module, (int)offset);
+        case OP_SET_GLOBAL:
+            return constant_instruction("stg", module, (int)offset);
         case OP_EQUAL:
             return simple_instruction("equ", (int)offset);
         case OP_GREATER:

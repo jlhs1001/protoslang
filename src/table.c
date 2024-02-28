@@ -100,6 +100,19 @@ bool table_set(Table *table, ObjString *key, Value value) {
     return is_new_key;
 }
 
+bool table_delete(Table *table, ObjString *key) {
+    if (table->count == 0) return false;
+
+    // find the entry
+    Entry *entry = find_entry(table->entries, table->capacity, key);
+    if (entry->key == NULL) return false;
+
+    // place a tombstone in the entry
+    entry->key = NULL;
+    entry->value = BOOL_VAL(true);
+    return true;
+}
+
 void table_add_all(Table *from, Table *to) {
     for (int i = 0; i < from->capacity; i++) {
         Entry *entry = &from->entries[i];
