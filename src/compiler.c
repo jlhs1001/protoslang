@@ -126,6 +126,18 @@ static void emit_byte_pair(uint8_t byte1, uint8_t byte2) {
     emit_byte(byte2);
 }
 
+static void emit_loop(int loop_start) {
+    emit_byte(OP_LOOP);
+
+    int offset = (int)current_module()->count - loop_start + 2;
+    if (offset > UINT16_MAX) {
+        error("Loop body too large.");
+    }
+
+    emit_byte((offset >> 8) & 0xff);
+    emit_byte(offset & 0xff);
+}
+
 static int emit_jump(uint8_t instruction) {
     // emit specified jump instruction
     emit_byte(instruction);
@@ -477,6 +489,30 @@ static void if_statement() {
     patch_jump(else_jump);
 }
 
+static void while_statement() {
+    int loop_start = current_module()->count;
+    // parse while condition
+    expression();
+
+    // require a left brace after the expression, but don't consume it.
+    if (!check(TK_LBRACE)) {
+        error("Expected '{' after 'while' condition.");
+    }
+
+    // emit a jump to the loop body
+    int exit_jump = emit_jump(OP_JUMP_IF_FALSE);
+    emit_byte(OP_POP);
+    statement();
+
+    emit_loop(loop_start);
+
+    // patch the jump to the loop body
+    patch_jump(exit_jump);
+
+    // pop the condition value to maintain zero stack effect
+    emit_byte(OP_POP);
+}
+
 static void print_statement() {
     // require a left parenthesis after the 'println' keyword
     if (check(TK_LPAREN)) {
@@ -528,6 +564,8 @@ static void statement() {
         print_statement();
     } else if (match(TK_IF)) {
         if_statement();
+    } else if (match(TK_WHILE)) {
+        while_statement();
     } else if (match(TK_LBRACE)) {
         begin_scope();
         block();

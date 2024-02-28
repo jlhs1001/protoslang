@@ -19,6 +19,7 @@ typedef enum {
 
     OP_JUMP,
     OP_JUMP_IF_FALSE,
+    OP_LOOP,
 
     // type casting
 //    OP_TO_STRING,

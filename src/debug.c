@@ -59,6 +59,8 @@ int disassemble_instruction(Module* module, uint32_t offset) {
             return jump_instruction("jmp", 1, module, (int)offset);
         case OP_JUMP_IF_FALSE:
             return jump_instruction("jif", 1, module, (int)offset);
+        case OP_LOOP:
+            return jump_instruction("lop", -1, module, (int)offset);
         case OP_RETURN:
             return simple_instruction("ret", (int)offset);
         case OP_CONSTANT:
