@@ -33,12 +33,12 @@ Protoslang is still in active development. The README will temporarily hold the 
 
 - [x] Integers
 - [x] Floats
-- [ ] Strings
+- [x] Strings
 - [x] Booleans
 
 ## Variables
 
-- [ ] Declaration
+- [x] Declaration
 - [ ] Assignment
 
 ## Functions
