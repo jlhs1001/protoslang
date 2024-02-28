@@ -18,9 +18,12 @@ typedef struct {
 void initialize_table(Table *table);
 void free_table(Table *table);
 bool table_set(Table *table, ObjString *key, Value value);
+bool table_delete(Table *table, ObjString *key);
+bool table_get(Table *table, ObjString *key, Value *value);
 
 // used to get a value from the table
 // important for things like object inheritance
 void table_add_all(Table *from, Table *to);
+ObjString *table_find_string(Table *table, const char *chars, int length, uint32_t hash);
 
 #endif //PROTOSLANG_TABLE_H

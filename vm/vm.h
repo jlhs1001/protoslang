@@ -3,6 +3,7 @@
 
 #include "module.h"
 #include "value.h"
+#include "table.h"
 
 // The maximum number of values that the VM can store on the stack.
 // For now, we shall allocate a fixed amount of memory for the stack.
@@ -21,6 +22,12 @@ typedef struct {
 
     // A pointer to the top of the stack.
     Value* stack_top;
+
+    // The table of globals that the VM will use to store global variables.
+    Table globals;
+
+    // The table of strings that the VM will use to store strings.
+    Table strings;
 
     // The linked list of objects in the heap.
     Obj* objects;

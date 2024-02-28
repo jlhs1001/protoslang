@@ -63,9 +63,7 @@ bool values_equal(Value a, Value b) {
         case TYPE_NUMBER:
             return AS_NUMBER(a) == AS_NUMBER(b);
         case VAL_OBJ: {
-            ObjString *a_str = AS_STRING(a);
-            ObjString *b_str = AS_STRING(b);
-            return a_str->length == b_str->length && memcmp(a_str->chars, b_str->chars, a_str->length) == 0;
+            return AS_OBJ(a) == AS_OBJ(b);
         }
         default:
             return false; // Unreachable.

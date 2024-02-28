@@ -21,15 +21,36 @@ void free_table(Table *table) {
 
 static Entry *find_entry(Entry *entries, int capacity, ObjString *key) {
     uint32_t index = key->hash % capacity;
+    Entry *tombstone = NULL;
+
     for (;;) {
         Entry *entry = &entries[index];
 
-        if (entry->key == key || entry->key == NULL) {
+        if (entry->key == NULL) {
+            if (IS_NIL(entry->value)) {
+                // empty entry
+                return tombstone != NULL ? tombstone : entry;
+            } else {
+                // we found a tombstone
+                if (tombstone == NULL) tombstone = entry;
+            }
+        } else if (entry->key == key) {
+            // we found the key
             return entry;
         }
 
         index = (index + 1) % capacity;
     }
+}
+
+bool table_get(Table *table, ObjString *key, Value *value) {
+    if (table->count == 0) return false;
+
+    Entry *entry = find_entry(table->entries, table->capacity, key);
+    if (entry->key == NULL) return false;
+
+    *value = entry->value;
+    return true;
 }
 
 static void adjust_capacity(Table *table, int capacity) {
@@ -40,6 +61,7 @@ static void adjust_capacity(Table *table, int capacity) {
         entries[i].value = NIL_VAL;
     }
 
+    table->count = 0;
     for (int i = 0; i < table->capacity; i++) {
         Entry *entry = &table->entries[i];
         if (entry->key == NULL) {
@@ -49,6 +71,10 @@ static void adjust_capacity(Table *table, int capacity) {
         Entry *dest = find_entry(entries, capacity, entry->key);
         dest->key = entry->key;
         dest->value = entry->value;
+
+        // when we grow the capacity, we may end up with fewer entries
+        // in the resulting larger array because all the tombstones are removed.
+        table->count++;
     }
 
     FREE_ARRAY(Entry, table->entries, table->capacity);
@@ -66,7 +92,7 @@ bool table_set(Table *table, ObjString *key, Value value) {
     Entry *entry = find_entry(table->entries, table->capacity, key);
 
     bool is_new_key = entry->key == NULL;
-    if (is_new_key) table->count++;
+    if (is_new_key && IS_NIL(entry->value)) table->count++;
 
     entry->key = key;
     entry->value = value;
@@ -80,5 +106,27 @@ void table_add_all(Table *from, Table *to) {
         if (entry->key != NULL) {
             table_set(to, entry->key, entry->value);
         }
+    }
+}
+
+ObjString *table_find_string(Table *table, const char *chars, int length, uint32_t hash) {
+    if (table->count == 0) return NULL;
+
+    uint32_t index = hash % table->capacity;
+
+    for (;;) {
+        Entry *entry = &table->entries[index];
+
+        if (entry->key == NULL) {
+            if (IS_NIL(entry->value)) {
+                // empty entry
+                return NULL;
+            }
+        } else if (entry->key->length == length && entry->key->hash == hash && memcmp(entry->key->chars, chars, length) == 0) {
+            // we found the key
+            return entry->key;
+        }
+
+        index = (index + 1) % table->capacity;
     }
 }

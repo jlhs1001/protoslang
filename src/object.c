@@ -3,6 +3,7 @@
 
 #include "memory.h"
 #include "object.h"
+#include "table.h"
 #include "value.h"
 #include "vm.h"
 
@@ -27,6 +28,7 @@ static ObjString *allocate_string(char *chars, int length, uint32_t hash) {
     string->length = length;
     string->chars = chars;
     string->hash = hash;
+    table_set(&vm.strings, string, NIL_VAL);
     return string;
 }
 
@@ -44,6 +46,12 @@ static uint32_t hash_string(const char *key, int length) {
 ObjString *take_string(char *chars, int length) {
     // calculate the hash of the string
     uint32_t hash = hash_string(chars, length);
+    ObjString *interned = table_find_string(&vm.strings, chars, length, hash);
+
+    if (interned != NULL) {
+        FREE_ARRAY(char, chars, length + 1);
+        return interned;
+    }
 
     // return the new string
     return allocate_string(chars, length, hash);
@@ -52,6 +60,11 @@ ObjString *take_string(char *chars, int length) {
 ObjString *copy_string(const char *chars, int length) {
     // calculate the hash of the string
     uint32_t hash = hash_string(chars, length);
+    ObjString *interned = table_find_string(&vm.strings, chars, length, hash);
+
+    if (interned != NULL) {
+        return interned;
+    }
 
     // allocate a new string onto the heap
     char *heap_chars = ALLOCATE(char, length + 1);

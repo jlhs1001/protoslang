@@ -91,6 +91,19 @@ static void consume(TokenType type, const char *message) {
     error_at_current(message);
 }
 
+
+static bool check(TokenType type) {
+    return parser.current.type == type;
+}
+
+static bool match(TokenType type) {
+    if (!check(type)) return false;
+
+    advance();
+
+    return true;
+}
+
 static void emit_byte(uint8_t byte) {
     write_module(current_module(), byte, parser.previous.line);
 }
@@ -105,6 +118,8 @@ static void emit_return() {
 }
 
 static void expression();
+static void statement();
+static void declaration();
 
 static ParseRule *get_rule(TokenType type);
 
@@ -192,6 +207,165 @@ static void expression() {
     parse_precedence(PREC_ASSIGNMENT);
 }
 
+static void parse_precedence(Precedence precedence) {
+    advance();
+    ParseFn prefix_rule = get_rule(parser.previous.type)->prefix;
+    if (prefix_rule == NULL) {
+        // TODO: Make this error message more informative.
+        error("Expected expression.");
+        return;
+    }
+
+    prefix_rule();
+
+    while (precedence <= get_rule(parser.current.type)->precedence) {
+        advance();
+        ParseFn infix_rule = get_rule(parser.previous.type)->infix;
+        infix_rule();
+    }
+}
+
+static uint8_t identifier_constant(Token *name) {
+    return make_constant(OBJ_VAL(copy_string(name->start, name->length)));
+}
+
+static uint8_t parse_variable(const char *error_message) {
+    consume(TK_IDENTIFIER, error_message);
+    return identifier_constant(&parser.previous);
+}
+
+static void define_variable(uint8_t global) {
+    emit_byte_pair(OP_DEFINE_GLOBAL, global);
+}
+
+static void variable_declaration() {
+    uint8_t global = parse_variable("Expected variable name.");
+
+    if (match(TK_EQUAL)) {
+        // variable assignment handling
+        expression();
+    } else {
+        // variable initialization handling
+        emit_byte(OP_NIL);
+    }
+
+    consume(TK_SEMICOLON, "Expected ';' after variable declaration.");
+
+    define_variable(global);
+}
+
+// TODO: Further investigate using context to determine the end of a statement or expression,
+//  as opposed to using a semicolon as a synchronizing token.
+//// check if the current token is a synchronizing token
+//static bool is_sync() {
+//    switch (parser.current.type) {
+//        case TK_CLASS:
+//        case TK_FN:
+//        case TK_LET:
+//        case TK_IF:
+//        case TK_WHILE:
+//        case TK_PRINTLN:
+//        case TK_RETURN:
+//        case TK_EOF:
+//            return true;
+//        default:
+//            return false;
+//    }
+//}
+//
+//static bool is_expr_stmt_op(TokenType type) {
+//    switch (type) {
+//        case TK_EQUAL:
+//        case TK_PLUS:
+//        case TK_MINUS:
+//        case TK_STAR:
+//        case TK_SLASH:
+//        case TK_BANG_EQUAL:
+//        case TK_EQUAL_EQUAL:
+//        case TK_GREATER:
+//        case TK_GREATER_EQUAL:
+//        case TK_LESS:
+//        case TK_LESS_EQUAL:
+//            return true;
+//        default:
+//            return false;
+//    }
+//}
+
+static void expression_statement() {
+    expression();
+    consume(TK_SEMICOLON, "Expected ';' after expression.");
+    emit_byte(OP_POP);
+}
+
+static void print_statement() {
+    // require a left parenthesis after the 'println' keyword
+    if (check(TK_LPAREN)) {
+        advance();
+
+        // compile the expression
+        expression();
+
+        // require a right parenthesis after the expression
+        consume(TK_RPAREN, "Expected ')' after expression.");
+    } else {
+        error("Expected '(' after 'println'.");
+    }
+
+    // require a semicolon after the expression
+    consume(TK_SEMICOLON, "Expected ';' after expression.");
+
+    // emit the instruction to print the value
+    emit_byte(OP_PRINTLN);
+}
+
+static void synchronize() {
+    parser.panic_mode = false;
+
+    while (parser.current.type != TK_EOF) {
+        // advance to the next synchronizing token
+        if (parser.previous.type == TK_SEMICOLON) return;
+
+        switch (parser.current.type) {
+            case TK_CLASS:
+            case TK_FN:
+            case TK_LET:
+            case TK_IF:
+            case TK_WHILE:
+            case TK_PRINTLN:
+            case TK_RETURN:
+                return;
+            default:
+                // Do nothing.
+                ;
+        }
+
+        advance();
+    }
+}
+
+static void statement() {
+    if (match(TK_PRINTLN)) {
+        print_statement();
+    } else {
+        expression_statement();
+    }
+}
+
+static void declaration() {
+    if (match(TK_LET)) {
+        // variable declaration handling
+        variable_declaration();
+    } else {
+        // statement handling
+        statement();
+    }
+
+    if (parser.panic_mode) {
+        synchronize();
+    }
+}
+
 static void grouping() {
     expression();
     consume(TK_RPAREN, "Expected ')' after expression.");
@@ -212,6 +386,15 @@ static void string() {
             parser.previous.start + 1,
             parser.previous.length - 2
     )));
+}
+
+static void named_variable(Token name) {
+    uint8_t arg = identifier_constant(&name);
+    emit_byte_pair(OP_GET_GLOBAL, arg);
+}
+
+static void variable() {
+    named_variable(parser.previous);
 }
 
 static void unary() {
@@ -253,7 +436,7 @@ ParseRule rules[] = {
         [TK_GREATER_EQUAL]  = {NULL, binary, PREC_COMPARISON},
         [TK_LESS]           = {NULL, binary, PREC_COMPARISON},
         [TK_LESS_EQUAL]     = {NULL, binary, PREC_COMPARISON},
-        [TK_IDENTIFIER]     = {NULL, NULL, PREC_NONE},
+        [TK_IDENTIFIER]     = {variable, NULL, PREC_NONE},
         [TK_STRING]         = {string, NULL, PREC_NONE},
         [TK_NUMBER]         = {number, NULL, PREC_NONE},
         [TK_AND]            = {NULL, NULL, PREC_NONE},
@@ -276,23 +459,7 @@ ParseRule rules[] = {
         [TK_EOF]            = {NULL, NULL, PREC_NONE}
 };
 
-static void parse_precedence(Precedence precedence) {
-    advance();
-    ParseFn prefix_rule = get_rule(parser.previous.type)->prefix;
-    if (prefix_rule == NULL) {
-        // TODO: Make this error message more informative.
-        error("Expected expression.");
-        return;
-    }
 
-    prefix_rule();
-
-    while (precedence <= get_rule(parser.current.type)->precedence) {
-        advance();
-        ParseFn infix_rule = get_rule(parser.previous.type)->infix;
-        infix_rule();
-    }
-}
 
 static ParseRule *get_rule(TokenType type) {
     return &rules[type];
@@ -306,8 +473,11 @@ bool compile(const char *source, Module *module) {
     parser.panic_mode = false;
 
     advance();
-    expression();
-    consume(TK_EOF, "Expect end of expression.");
+
+    while (!match(TK_EOF)) {
+        declaration();
+    }
+
     end_compiler();
     return !parser.had_error;
 }

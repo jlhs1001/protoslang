@@ -41,6 +41,8 @@ int disassemble_instruction(Module* module, uint32_t offset) {
 
     uint8_t instruction = module->code[offset];
     switch (instruction) {
+        case OP_PRINTLN:
+            return simple_instruction("println", (int)offset);
         case OP_RETURN:
             return simple_instruction("ret", (int)offset);
         case OP_CONSTANT:
@@ -51,6 +53,12 @@ int disassemble_instruction(Module* module, uint32_t offset) {
             return simple_instruction("tru", (int)offset);
         case OP_FALSE:
             return simple_instruction("fal", (int)offset);
+        case OP_POP:
+            return simple_instruction("pop", (int)offset);
+        case OP_GET_GLOBAL:
+            return constant_instruction("ldg", module, (int)offset);
+        case OP_DEFINE_GLOBAL:
+            return constant_instruction("def", module, (int)offset);
         case OP_EQUAL:
             return simple_instruction("equ", (int)offset);
         case OP_GREATER:
