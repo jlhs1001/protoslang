@@ -1,13 +1,35 @@
-let abc = 100;
+//println("Hello, World!");
 
-if abc > 50 {
-    println("abc is greater than 50");
-} else {
-    println("abc is less than 50");
-}
+//let a = 1;
+//while a < 10 {
+//    println(a);
+//    let some_string = "Hello, " + "world!";
+//
+//
+//
+//    println(some_string);
+//    a = a + 1;
+//}
 
-let x = 0;
-while x < 10 {
-    println(x);
-    x = x + 1;
-}
+
+//
+//if 1 < 2 {
+//    println("1 is less than 2");
+//} else {
+//    println("1 is not less than 2");
+//}
+
+//let abc = 1;
+//abc = "hello world";
+//println(abc);
+
+let x = ["abc", "def"];
+println(x[0]);
+
+//let x = "def";
+//println(x);
+
+//{
+//    let x = 10;
+//    println(x);
+//}

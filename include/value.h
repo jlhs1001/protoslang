@@ -10,11 +10,14 @@
 typedef struct Obj Obj;
 typedef struct ObjString ObjString;
 
+typedef struct ValueArray ValueArray;
+
 typedef enum {
     TYPE_BOOL,
     TYPE_NIL,
     TYPE_NUMBER,
     VAL_OBJ,
+    VAL_ARRAY,
 } ValueType;
 
 // Note that each value is currently 16 bytes...
@@ -42,12 +45,13 @@ typedef struct {
 #define NIL_VAL ((Value){TYPE_NIL, {.number = 0}})
 #define NUMBER_VAL(value) ((Value){TYPE_NUMBER, {.number = value}})
 #define OBJ_VAL(object) ((Value){VAL_OBJ, {.obj = (Obj*)object}})
+#define ARRAY_VAL(array) ((Value){VAL_ARRAY, {.array = array}})
 
-typedef struct {
+struct ValueArray {
     int capacity;
     int count;
     Value *values;
-} ValueArray;
+};
 
 bool values_equal(Value a, Value b);
 

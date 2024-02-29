@@ -5,6 +5,7 @@ typedef enum {
     // 1-char tokens
     TK_LPAREN, TK_RPAREN,
     TK_LBRACE, TK_RBRACE,
+    TK_LBRACKET, TK_RBRACKET,
     TK_COMMA, TK_DOT,
     TK_MINUS, TK_PLUS,
     TK_SEMICOLON, TK_SLASH, TK_STAR,

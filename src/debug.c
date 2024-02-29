@@ -42,6 +42,19 @@ static int jump_instruction(const char* name, int sign, Module* module, int offs
     return offset + 3;
 }
 
+static int list_instruction(const char* name, Module* module, int offset) {
+    // Get the index of the constant value from the next byte in the module's array of instructions.
+    uint8_t constant = module->code[offset + 1];
+
+    // Print the constant value and its index in the array of values.
+    printf("%-16s %4d '", name, constant);
+    print_value(module->constants.values[constant]);
+    printf("'\n");
+
+    // Return the offset of the next instruction in the module's array of instructions.
+    return offset + 2;
+}
+
 int disassemble_instruction(Module* module, uint32_t offset) {
     printf("%04d ", offset);
     // Print the line number if the current instruction is on the same line as the previous instruction.
@@ -101,6 +114,12 @@ int disassemble_instruction(Module* module, uint32_t offset) {
             return simple_instruction("not", (int)offset);
         case OP_NEGATE:
             return simple_instruction("neg", (int)offset);
+        case OP_BUILD_LIST:
+            return list_instruction("lst", module, (int)offset);
+        case OP_INDEX_LIST:
+            return simple_instruction("idx", (int)offset);
+        case OP_STORE_LIST:
+            return simple_instruction("sto", (int)offset);
         default:
             printf("Unknown opcode %d\n", instruction);
             return (int)offset + 1;

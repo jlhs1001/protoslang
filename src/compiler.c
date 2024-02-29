@@ -27,6 +27,7 @@ typedef enum {
     PREC_TERM,        // + -
     PREC_FACTOR,      // * /
     PREC_UNARY,       // ! -
+    PREC_SUBSCRIPT,   // []
     PREC_CALL,        // . ()
     PREC_PRIMARY
 } Precedence;
@@ -126,6 +127,22 @@ static void emit_byte_pair(uint8_t byte1, uint8_t byte2) {
     emit_byte(byte2);
 }
 
+static uint8_t make_constant(Value value) {
+    int constant = add_constant(current_module(), value);
+
+    // TODO: dynamically resize the constant pool
+    if (constant > UINT8_MAX) {
+        error("Too many constants in one module.");
+        return 0;
+    }
+
+    return (uint8_t) constant;
+}
+
+static void emit_constant(Value value) {
+    emit_byte_pair(OP_CONSTANT, make_constant(value));
+}
+
 static void emit_loop(int loop_start) {
     emit_byte(OP_LOOP);
 
@@ -161,18 +178,6 @@ static void declaration();
 static ParseRule *get_rule(TokenType type);
 
 static void parse_precedence(Precedence precedence);
-
-static uint8_t make_constant(Value value) {
-    int constant = add_constant(current_module(), value);
-
-    // TODO: dynamically resize the constant pool
-    if (constant > UINT8_MAX) {
-        error("Too many constants in one module.");
-        return 0;
-    }
-
-    return (uint8_t) constant;
-}
 
 static void end_compiler() {
     emit_return();
@@ -367,6 +372,7 @@ static void define_variable(uint8_t global) {
         mark_initialized();
         return;
     }
+
 
     emit_byte_pair(OP_DEFINE_GLOBAL, global);
 }
@@ -575,6 +581,43 @@ static void statement() {
     }
 }
 
+static void list(bool can_assign) {
+    int item_count = 0;
+    if (!check(TK_RBRACKET)) {
+        do {
+            if (check(TK_RBRACKET)) {
+                // trailing comma handling
+                break;
+            }
+
+            parse_precedence(PREC_OR);
+
+            if (item_count == UINT8_COUNT) {
+                error("Cannot have more than 255 items in a list.");
+            }
+
+            item_count++;
+        } while (match(TK_COMMA));
+    }
+
+    consume(TK_RBRACKET, "Expected ']' after list.");
+
+    emit_byte(OP_BUILD_LIST);
+    emit_byte(item_count);
+}
+
+static void subscript(bool can_assign) {
+    parse_precedence(PREC_OR);
+    consume(TK_RBRACKET, "Expected ']' after subscript.");
+
+    if (can_assign && match(TK_EQUAL)) {
+        expression();
+        emit_byte(OP_STORE_LIST);
+    } else {
+        emit_byte(OP_INDEX_LIST);
+    }
+}
+
 static void declaration() {
     if (match(TK_LET)) {
         // variable declaration handling
@@ -592,10 +635,6 @@ static void declaration() {
 static void grouping(bool can_assign) {
     expression();
     consume(TK_RPAREN, "Expected ')' after expression.");
-}
-
-static void emit_constant(Value value) {
-    emit_byte_pair(OP_CONSTANT, make_constant(value));
 }
 
 static void initialize_compiler(Compiler *compiler) {
@@ -679,6 +718,8 @@ ParseRule rules[] = {
         [TK_RBRACE]         = {NULL, NULL, PREC_NONE},
         [TK_LBRACE]         = {NULL, NULL, PREC_NONE},
         [TK_RPAREN]         = {NULL, NULL, PREC_NONE},
+        [TK_LBRACKET]       = {list, subscript, PREC_SUBSCRIPT},
+        [TK_RBRACKET]       = {NULL, NULL, PREC_NONE},
         [TK_COMMA]          = {NULL, NULL, PREC_NONE},
         [TK_DOT]            = {NULL, NULL, PREC_NONE},
         [TK_MINUS]          = {unary, binary, PREC_TERM},

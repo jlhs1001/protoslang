@@ -21,6 +21,11 @@ typedef enum {
     OP_JUMP_IF_FALSE,
     OP_LOOP,
 
+    // list operations
+    OP_BUILD_LIST,
+    OP_INDEX_LIST,
+    OP_STORE_LIST,
+
     // type casting
 //    OP_TO_STRING,
 
@@ -34,6 +39,8 @@ typedef enum {
     OP_GET_GLOBAL,
     OP_DEFINE_GLOBAL,
     OP_SET_GLOBAL,
+    OP_SET_N_LOCAL,
+    OP_SET_N_GLOBAL,
     OP_EQUAL,
     OP_GREATER,
     OP_LESS,

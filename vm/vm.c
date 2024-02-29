@@ -57,6 +57,7 @@ Value pop() {
 }
 
 static Value peek(int distance) {
+    // Return the stack element that is 'distance' elements below the top of the stack.
     return vm.stack_top[-1 - distance];
 }
 
@@ -239,6 +240,84 @@ static InterpretResult run() {
                 // the only difference between this and OP_JUMP is that the offset is negative
                 uint16_t offset = READ_SHORT();
                 vm.ip -= offset;
+                break;
+            }
+            case OP_BUILD_LIST: {
+                // stack before: [a, b, c, ...] and after: [list]
+                ObjList *list = allocate_list();
+                uint8_t count = READ_BYTE();
+
+                // add each element to the list
+                for (int i = 0; i < count; i++) {
+                    append_to_list(list, peek(count - i - 1));
+                }
+//                pop();
+
+                // pop the list items from the stack
+                while (count--) {
+                    pop();
+                }
+
+                // push the list onto the stack
+                push(OBJ_VAL(list));
+                break;
+            }
+            case OP_INDEX_LIST: {
+                // stack before: [list, index] and after: [index(list, index)]
+                Value stack_index = pop();
+                Value stack_list = pop();
+                Value result;
+
+                // ensure that the value is a list
+                if (!IS_LIST(stack_list)) {
+                    runtime_error("Index operator must be used with a list.");
+                    return INTERPRET_RUNTIME_ERROR;
+                }
+
+                ObjList *list = AS_LIST(stack_list);
+
+                if (!IS_NUMBER(stack_index)) {
+                    runtime_error("Index must be a number.");
+                    return INTERPRET_RUNTIME_ERROR;
+                }
+
+                int index = AS_NUMBER(stack_index);
+
+                if (!is_valid_index(list, index)) {
+                    runtime_error("Index out of bounds.");
+                    return INTERPRET_RUNTIME_ERROR;
+                }
+
+                result = read_list(list, index);
+                push(result);
+                break;
+            }
+            case OP_STORE_LIST: {
+                // Stack before: [list, index, item] and after: [item]
+                Value item = pop();
+                Value stack_index = pop();
+                Value stack_list = pop();
+
+                if (!IS_LIST(stack_list)) {
+                    runtime_error("Cannot store value in a non-list.");
+                    return INTERPRET_RUNTIME_ERROR;
+                }
+                ObjList* list = AS_LIST(stack_list);
+
+                if (!IS_NUMBER(stack_index)) {
+                    runtime_error("List index is not a number.");
+                    return INTERPRET_RUNTIME_ERROR;
+                }
+
+                int index = AS_NUMBER(stack_index);
+
+                if (!is_valid_index(list, index)) {
+                    runtime_error("Invalid list index.");
+                    return INTERPRET_RUNTIME_ERROR;
+                }
+
+                store_list(list, index, item);
+                push(item);
                 break;
             }
             case OP_RETURN: {

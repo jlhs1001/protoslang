@@ -223,6 +223,10 @@ Token lex_token() {
             return make_token(TK_LBRACE);
         case '}':
             return make_token(TK_RBRACE);
+        case '[':
+            return make_token(TK_LBRACKET);
+        case ']':
+            return make_token(TK_RBRACKET);
         case ';':
             return make_token(TK_SEMICOLON);
         case ',':

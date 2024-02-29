@@ -23,6 +23,52 @@ static Obj *allocate_object(size_t size, ObjType type) {
     return object;
 }
 
+ObjList *allocate_list() {
+    ObjList *list = ALLOCATE_OBJ(ObjList, OBJ_LIST);
+    list->count = 0;
+    list->capacity = 0;
+    list->items = NULL;
+    return list;
+}
+
+void append_to_list(ObjList *list, Value value) {
+    // calculate new capacity and reallocate if necessary
+    if (list->capacity < list->count + 1) {
+        int old_capacity = list->capacity;
+        list->capacity = GROW_CAPACITY(old_capacity);
+        list->items = GROW_ARRAY(list->items, Value, old_capacity, list->capacity);
+    }
+
+    // append the value to the list
+    list->items[list->count] = value;
+    list->count++;
+}
+
+void store_list(ObjList *list, int index, Value value) {
+    // store the value in the list
+    list->items[index] = value;
+}
+
+Value read_list(ObjList *list, int index) {
+    // read the value from the list
+    return list->items[index];
+}
+
+void delete_from_list(ObjList *list, int index) {
+    // delete the value from the list
+    for (int i = index; i < list->count - 1; i++) {
+        list->items[i] = list->items[i + 1];
+    }
+
+    list->items[list->count - 1] = NIL_VAL;
+    list->count--;
+}
+
+bool is_valid_index(ObjList *list, int index) {
+    // check if the index is valid
+    return index >= 0 && index < list->count;
+}
+
 static ObjString *allocate_string(char *chars, int length, uint32_t hash) {
     ObjString *string = ALLOCATE_OBJ(ObjString, OBJ_STRING);
     string->length = length;
@@ -82,5 +128,20 @@ void print_object(Value value) {
         case OBJ_STRING:
             printf("%s", AS_CSTRING(value));
             break;
+        case OBJ_LIST:
+            print_list(AS_LIST(value));
+            break;
     }
 }
+
+void print_list(ObjList* list) {
+    printf("[");
+    for (int i = 0; i < list->count; i++) {
+        print_value(list->items[i]); // Assume printValue is a function that can print Lox values correctly
+        if (i < list->count - 1) {
+            printf(", ");
+        }
+    }
+    printf("]");
+}
+
