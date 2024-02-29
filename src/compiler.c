@@ -28,6 +28,7 @@ typedef enum {
     PREC_FACTOR,      // * /
     PREC_UNARY,       // ! -
     PREC_SUBSCRIPT,   // []
+    PREC_RANGE,       // ..
     PREC_CALL,        // . ()
     PREC_PRIMARY
 } Precedence;
@@ -146,7 +147,7 @@ static void emit_constant(Value value) {
 static void emit_loop(int loop_start) {
     emit_byte(OP_LOOP);
 
-    int offset = (int)current_module()->count - loop_start + 2;
+    int offset = (int) current_module()->count - loop_start + 2;
     if (offset > UINT16_MAX) {
         error("Loop body too large.");
     }
@@ -164,7 +165,7 @@ static int emit_jump(uint8_t instruction) {
     emit_byte(0xff);
 
     // return the offset of the placeholder bytes
-    return (int)current_module()->count - 2;
+    return (int) current_module()->count - 2;
 }
 
 static void emit_return() {
@@ -172,7 +173,9 @@ static void emit_return() {
 }
 
 static void expression();
+
 static void statement();
+
 static void declaration();
 
 static ParseRule *get_rule(TokenType type);
@@ -240,6 +243,9 @@ static void binary(bool can_assign) {
             break;
         case TK_SLASH:
             emit_byte(OP_DIVIDE);
+            break;
+        case TK_RANGE:
+            emit_byte(OP_BUILD_RANGE);
             break;
         default:
             return; // unreachable
@@ -379,7 +385,7 @@ static void define_variable(uint8_t global) {
 
 static void patch_jump(int offset) {
     // subtract two to account for the bytecode for the jump offset
-    int jump = (int)current_module()->count - offset - 2;
+    int jump = (int) current_module()->count - offset - 2;
 
     // TODO: upgrade compiler facilities to handle larger jumps
     if (jump > UINT16_MAX) {
@@ -606,6 +612,21 @@ static void list(bool can_assign) {
     emit_byte(item_count);
 }
 
+static void integer(bool can_assign) {
+    long value = strtol(parser.previous.start, NULL, 10);
+    emit_constant(NUMBER_VAL(value));
+}
+
+//static void range(bool can_assign) {
+//    // Expect a number for the start of the range
+//    parse_precedence(PREC_OR);
+//    consume(TK_RANGE, "Expected '..' after start of range.");
+//    // Expect a number for the end of the range
+//    parse_precedence(PREC_OR);
+//
+//    emit_byte(OP_BUILD_RANGE);
+//}
+
 static void subscript(bool can_assign) {
     parse_precedence(PREC_OR);
     consume(TK_RBRACKET, "Expected ']' after subscript.");
@@ -684,9 +705,9 @@ static void named_variable(Token name, bool can_assign) {
 
     if (can_assign && match(TK_EQUAL)) {
         expression();
-        emit_byte_pair(set_op, (uint8_t)arg);
+        emit_byte_pair(set_op, (uint8_t) arg);
     } else {
-        emit_byte_pair(get_op, (uint8_t)arg);
+        emit_byte_pair(get_op, (uint8_t) arg);
     }
 }
 
@@ -721,6 +742,7 @@ ParseRule rules[] = {
         [TK_LBRACKET]       = {list, subscript, PREC_SUBSCRIPT},
         [TK_RBRACKET]       = {NULL, NULL, PREC_NONE},
         [TK_COMMA]          = {NULL, NULL, PREC_NONE},
+        [TK_RANGE]          = {NULL, binary, PREC_RANGE},
         [TK_DOT]            = {NULL, NULL, PREC_NONE},
         [TK_MINUS]          = {unary, binary, PREC_TERM},
         [TK_PLUS]           = {NULL, binary, PREC_TERM},

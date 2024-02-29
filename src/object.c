@@ -23,6 +23,13 @@ static Obj *allocate_object(size_t size, ObjType type) {
     return object;
 }
 
+ObjRange *allocate_range(double start, double end) {
+    ObjRange *range = ALLOCATE_OBJ(ObjRange, OBJ_RANGE);
+    range->start = start;
+    range->end = end;
+    return range;
+}
+
 ObjList *allocate_list() {
     ObjList *list = ALLOCATE_OBJ(ObjList, OBJ_LIST);
     list->count = 0;
@@ -131,6 +138,9 @@ void print_object(Value value) {
         case OBJ_LIST:
             print_list(AS_LIST(value));
             break;
+        case OBJ_RANGE:
+            print_range(AS_RANGE(value));
+            break;
     }
 }
 
@@ -145,3 +155,6 @@ void print_list(ObjList* list) {
     printf("]");
 }
 
+void print_range(ObjRange* range) {
+    printf("%g..%g", range->start, range->end);
+}

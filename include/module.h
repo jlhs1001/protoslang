@@ -26,6 +26,9 @@ typedef enum {
     OP_INDEX_LIST,
     OP_STORE_LIST,
 
+    // range operations
+    OP_BUILD_RANGE,
+
     // type casting
 //    OP_TO_STRING,
 

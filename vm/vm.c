@@ -251,7 +251,6 @@ static InterpretResult run() {
                 for (int i = 0; i < count; i++) {
                     append_to_list(list, peek(count - i - 1));
                 }
-//                pop();
 
                 // pop the list items from the stack
                 while (count--) {
@@ -260,6 +259,26 @@ static InterpretResult run() {
 
                 // push the list onto the stack
                 push(OBJ_VAL(list));
+                break;
+            }
+            case OP_BUILD_RANGE: {
+                // Retrieve end and start of the range from the stack
+                Value endValue = pop();
+                Value startValue = pop();
+
+                // Ensure both values are numbers
+                if (!IS_NUMBER(startValue) || !IS_NUMBER(endValue)) {
+                    runtime_error("Range boundaries must be numbers.");
+                }
+
+                double start = AS_NUMBER(startValue);
+                double end = AS_NUMBER(endValue);
+
+                // Allocate and initialize the range object
+                ObjRange *range = allocate_range(start, end);
+
+                // Push the range object onto the stack
+                push(OBJ_VAL(range));
                 break;
             }
             case OP_INDEX_LIST: {

@@ -23,8 +23,13 @@
 //abc = "hello world";
 //println(abc);
 
-let x = ["abc", "def"];
-println(x[0]);
+//let x = ["abc", "def"];
+//println(x[0]);
+
+let x = ["abc", "def", 1];
+println(x[1]);
+
+println(0..10);
 
 //let x = "def";
 //println(x);

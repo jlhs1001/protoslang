@@ -120,6 +120,8 @@ int disassemble_instruction(Module* module, uint32_t offset) {
             return simple_instruction("idx", (int)offset);
         case OP_STORE_LIST:
             return simple_instruction("sto", (int)offset);
+        case OP_BUILD_RANGE:
+            return simple_instruction("rng", (int)offset);
         default:
             printf("Unknown opcode %d\n", instruction);
             return (int)offset + 1;

@@ -14,6 +14,7 @@ typedef enum {
     // n-char tokens
     TK_BANG_EQUAL, TK_EQUAL_EQUAL,
     TK_GREATER_EQUAL, TK_LESS_EQUAL,
+    TK_RANGE,
 
     // literals
     TK_IDENTIFIER, TK_STRING, TK_NUMBER,
