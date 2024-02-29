@@ -21,13 +21,13 @@ cmake --build .
 ### Run the REPL
 
 ```bash
-./protoslang
+./slang_prototype
 ```
 
 ### Input a file
 
 ```bash
-./protoslang <path-to-file>
+./slang_prototype <path-to-file>
 ```
 
 ## Expressions
