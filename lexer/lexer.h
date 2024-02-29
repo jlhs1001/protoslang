@@ -23,7 +23,7 @@ typedef enum {
     TK_AND, TK_CLASS, TK_ELSE, TK_FALSE,
     TK_FN, TK_FOR, TK_IF, TK_NIL, TK_OR,
     TK_PRINTLN, TK_RETURN, TK_SUPER, TK_SELF,
-    TK_TRUE, TK_LET, TK_WHILE,
+    TK_TRUE, TK_LET, TK_WHILE, TK_IN,
 
     // error and end of file
     TK_ERROR, TK_EOF

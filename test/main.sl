@@ -26,10 +26,19 @@
 //let x = ["abc", "def"];
 //println(x[0]);
 
-let x = ["abc", "def", 1];
-println(x[1]);
+//let x = ["abc", "def", 1];
+//println(x[1]);
+//
+//println(0..10);
 
-println(0..10);
+for let i in 4..10 {
+    println(i);
+}
+
+//let x = 0;
+//while x < 10 {
+//    x = x + 1;
+//}
 
 //let x = "def";
 //println(x);

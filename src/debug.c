@@ -71,13 +71,15 @@ int disassemble_instruction(Module* module, uint32_t offset) {
         case OP_JUMP:
             return jump_instruction("jmp", 1, module, (int)offset);
         case OP_JUMP_IF_FALSE:
-            return jump_instruction("jif", 1, module, (int)offset);
+            return jump_instruction("jmp_fal", 1, module, (int)offset);
+        case OP_JUMP_IF_TRUE:
+            return jump_instruction("jmp_tru", 1, module, (int)offset);
         case OP_LOOP:
-            return jump_instruction("lop", -1, module, (int)offset);
+            return jump_instruction("loop", -1, module, (int)offset);
         case OP_RETURN:
-            return simple_instruction("ret", (int)offset);
+            return simple_instruction("return", (int)offset);
         case OP_CONSTANT:
-            return constant_instruction("imm", module, (int)offset);
+            return constant_instruction("ld_const", module, (int)offset);
         case OP_NIL:
             return simple_instruction("nil", (int)offset);
         case OP_TRUE:
@@ -87,21 +89,23 @@ int disassemble_instruction(Module* module, uint32_t offset) {
         case OP_POP:
             return simple_instruction("pop", (int)offset);
         case OP_GET_LOCAL:
-            return constant_instruction("ldl", module, (int)offset);
+            return constant_instruction("get_loc", module, (int)offset);
         case OP_SET_LOCAL:
-            return constant_instruction("stl", module, (int)offset);
+            return constant_instruction("set_loc", module, (int)offset);
         case OP_GET_GLOBAL:
-            return constant_instruction("ldg", module, (int)offset);
+            return constant_instruction("get_glo", module, (int)offset);
         case OP_DEFINE_GLOBAL:
-            return constant_instruction("stg", module, (int)offset);
+            return constant_instruction("def_glo", module, (int)offset);
         case OP_SET_GLOBAL:
-            return constant_instruction("stg", module, (int)offset);
+            return constant_instruction("set_glo", module, (int)offset);
         case OP_EQUAL:
             return simple_instruction("equ", (int)offset);
         case OP_GREATER:
             return simple_instruction("grt", (int)offset);
         case OP_LESS:
-            return simple_instruction("les", (int)offset);
+            return simple_instruction("less", (int)offset);
+        case OP_LESS_EQUAL:
+            return simple_instruction("less_eq", (int)offset);
         case OP_ADD:
             return simple_instruction("add", (int)offset);
         case OP_SUBTRACT:
@@ -115,13 +119,23 @@ int disassemble_instruction(Module* module, uint32_t offset) {
         case OP_NEGATE:
             return simple_instruction("neg", (int)offset);
         case OP_BUILD_LIST:
-            return list_instruction("lst", module, (int)offset);
+            return list_instruction("bld_lst", module, (int)offset);
         case OP_INDEX_LIST:
-            return simple_instruction("idx", (int)offset);
+            return simple_instruction("idx_lst", (int)offset);
         case OP_STORE_LIST:
-            return simple_instruction("sto", (int)offset);
+            return simple_instruction("str_lst", (int)offset);
         case OP_BUILD_RANGE:
-            return simple_instruction("rng", (int)offset);
+            return simple_instruction("bld_rng", (int)offset);
+        case OP_INCREMENT:
+            return simple_instruction("inc", (int)offset);
+        case OP_RANGE_START:
+            return simple_instruction("rng_beg", (int)offset);
+        case OP_RANGE_END:
+            return simple_instruction("rng_end", (int)offset);
+        case OP_INCREMENT_RANGE:
+            return simple_instruction("inc_rng", (int)offset);
+        case OP_DUPLICATE:
+            return simple_instruction("dup", (int)offset);
         default:
             printf("Unknown opcode %d\n", instruction);
             return (int)offset + 1;

@@ -189,6 +189,9 @@ static InterpretResult run() {
             case OP_LESS:
                 BINARY_OP(BOOL_VAL, <);
                 break;
+            case OP_LESS_EQUAL:
+                BINARY_OP(BOOL_VAL, <=);
+                break;
             case OP_ADD: {
                 if (IS_STRING(peek(0)) && IS_STRING(peek(1))) {
                     concatenate();
@@ -234,6 +237,11 @@ static InterpretResult run() {
             case OP_JUMP_IF_FALSE: {
                 uint16_t offset = READ_SHORT();
                 if (is_falsey(peek(0))) vm.ip += offset;
+                break;
+            }
+            case OP_JUMP_IF_TRUE: {
+                uint16_t offset = READ_SHORT();
+                if (!is_falsey(peek(0))) vm.ip += offset;
                 break;
             }
             case OP_LOOP: {
@@ -321,7 +329,7 @@ static InterpretResult run() {
                     runtime_error("Cannot store value in a non-list.");
                     return INTERPRET_RUNTIME_ERROR;
                 }
-                ObjList* list = AS_LIST(stack_list);
+                ObjList *list = AS_LIST(stack_list);
 
                 if (!IS_NUMBER(stack_index)) {
                     runtime_error("List index is not a number.");
@@ -339,9 +347,59 @@ static InterpretResult run() {
                 push(item);
                 break;
             }
+            case OP_INCREMENT: {
+                // Currently only supports incrementing numbers.
+                // stack before: [value] and after: [value + 1]
+                if (IS_NUMBER(peek(0))) {
+                    double incrementedValue = AS_NUMBER(pop()) + 1; // Increment the value
+                    push(NUMBER_VAL(incrementedValue)); // Push the incremented value back onto the stack
+                    break;
+                }
+
+                double incrementedValue = AS_NUMBER(pop()) + 1; // Increment the value
+                push(NUMBER_VAL(incrementedValue)); // Push the incremented value back onto the stack
+                break;
+            }
+            case OP_RANGE_START: {
+                // stack before: [range] and after: [range, start]
+                ObjRange *range = AS_RANGE(peek(0));
+                push(NUMBER_VAL(range->start));
+                break;
+            }
+            case OP_RANGE_END: {
+                // stack before: [range] and after: [range, end]
+                ObjRange *range = AS_RANGE(peek(0));
+                push(NUMBER_VAL(range->end));
+                break;
+            }
+            case OP_INCREMENT_RANGE: {
+                // stack before: [range, value] and after: [range, value + 1]
+                Value value = pop();
+                ObjRange *range = AS_RANGE(peek(0));
+
+                if (!IS_NUMBER(value)) {
+                    runtime_error("Range increment value must be a number.");
+                    return INTERPRET_RUNTIME_ERROR;
+                }
+
+                // ensure the value is within the range
+                if (AS_NUMBER(value) < range->start || AS_NUMBER(value) > range->end) {
+                    runtime_error("Increment value is out of range.");
+                    return INTERPRET_RUNTIME_ERROR;
+                }
+
+                double incrementedValue = AS_NUMBER(value) + 1; // Increment the value
+                push(NUMBER_VAL(incrementedValue)); // Push the incremented value back onto the stack
+                break;
+            }
             case OP_RETURN: {
                 // exit interpreter
                 return INTERPRET_OK;
+            }
+            case OP_DUPLICATE: {
+                // stack before: [value] and after: [value, value]
+                push(peek(0));
+                break;
             }
         }
     }

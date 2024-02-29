@@ -7,7 +7,9 @@
 #include "lexer.h"
 
 #ifdef DEBUG_PRINT_CODE
+
 #include "debug.h"
+
 #endif
 
 typedef struct {
@@ -406,6 +408,20 @@ static void and_(bool can_assign) {
     patch_jump(end_jump);
 }
 
+static void loop_declaration() {
+    uint8_t global = parse_variable("Expected variable name.");
+
+    if (match(TK_EQUAL)) {
+        // variable assignment handling
+        expression();
+    } else {
+        // variable initialization handling
+        emit_byte(OP_NIL);
+    }
+
+    define_variable(global);
+}
+
 static void variable_declaration() {
     uint8_t global = parse_variable("Expected variable name.");
 
@@ -466,9 +482,68 @@ static void expression_statement() {
     emit_byte(OP_POP);
 }
 
-static void for_statement() {
+void for_in_statement() {
+    consume(TK_LET, "Expect variable declaration in for-in loop.");
+    uint8_t variableIndex = parse_variable("Expect variable name.");
+    consume(TK_IN, "Expect 'in' after variable declaration.");
 
+    // Evaluate the range
+    expression();
+
+    // Set up the loop variable with the start of the range
+    emit_byte(OP_RANGE_START);
+    define_variable(variableIndex);
+
+//    // create a temporary variable to store the range end
+//    Token name = {
+//            .type = TK_IDENTIFIER,
+//            .start = "end",
+//            .length = 3,
+//            -1,
+//    };
+//
+//    add_local(name);
+
+//    resolve_local(current, &name);
+
+    // Mark the start of the loop for later looping back
+    int loopStart = current_module()->count;
+
+    // Loop body
+    statement();
+
+    emit_byte(OP_RANGE_END);
+
+    // Increment the loop variable within the bounds of the range
+    emit_byte_pair(OP_GET_GLOBAL, variableIndex);  // Get the range end
+
+    // Compare the incremented index (now below the range end on the stack) to the range end
+    emit_byte(OP_LESS_EQUAL);  // Assumes true if current index < range end
+
+    // Conditionally jump based on the comparison
+    int exitJump = emit_jump(OP_JUMP_IF_TRUE);  // Jump out of the loop if current index >= range end
+
+    // remove result of branch condition
+    emit_byte(OP_POP);
+
+    emit_byte_pair(OP_GET_GLOBAL, variableIndex);  // Get the range end
+
+    // Increment the loop variable
+    emit_byte(OP_INCREMENT_RANGE);
+
+    // Update the loop variable 'i' with the incremented value
+//    emit_byte(OP_DUPLICATE);  // Duplicate index again to update 'i' and keep a copy for the loop condition
+    define_variable(variableIndex);
+
+    // Loop back to start if not at the end
+    emit_loop(loopStart);
+
+    // Patch the exit jump to jump here if the comparison indicates the end of the range has been reached
+    patch_jump(exitJump);
+
+    // Optional: clean up the stack if necessary
 }
+
 
 static void if_statement() {
     // parse expression
@@ -584,7 +659,7 @@ static void statement() {
     } else if (match(TK_WHILE)) {
         while_statement();
     } else if (match(TK_FOR)) {
-        for_statement();
+        for_in_statement();
     } else if (match(TK_LBRACE)) {
         begin_scope();
         block();

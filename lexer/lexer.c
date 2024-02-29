@@ -142,8 +142,16 @@ static TokenType identifier_type() {
                 }
             }
             break;
-        case 'i':
-            return check_keyword(1, 1, "f", TK_IF);
+        case 'i': {
+            if (lexer.current - lexer.start > 1) {
+                switch (lexer.start[1]) {
+                    case 'f':
+                        return TK_IF;
+                    case 'n':
+                        return TK_IN;
+                }
+            }
+        }
         case 'l':
             return check_keyword(1, 2, "et", TK_LET);
         case 'n':

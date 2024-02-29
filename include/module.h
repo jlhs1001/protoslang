@@ -17,8 +17,13 @@ typedef enum {
     OP_NEGATE,
     OP_PRINTLN,
 
+    // variable operations
+    OP_INCREMENT,
+
+    // control flow
     OP_JUMP,
     OP_JUMP_IF_FALSE,
+    OP_JUMP_IF_TRUE,
     OP_LOOP,
 
     // list operations
@@ -28,6 +33,12 @@ typedef enum {
 
     // range operations
     OP_BUILD_RANGE,
+    OP_RANGE_START,
+    OP_RANGE_END,
+    OP_INCREMENT_RANGE,
+
+    // duplicate the top value on the stack
+    OP_DUPLICATE,
 
     // type casting
 //    OP_TO_STRING,
@@ -47,6 +58,7 @@ typedef enum {
     OP_EQUAL,
     OP_GREATER,
     OP_LESS,
+    OP_LESS_EQUAL,
     // TODO: implement !=, <=, and >=
 } OpCode;
 
