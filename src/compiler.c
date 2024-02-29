@@ -466,6 +466,10 @@ static void expression_statement() {
     emit_byte(OP_POP);
 }
 
+static void for_statement() {
+
+}
+
 static void if_statement() {
     // parse expression
     expression();
@@ -475,6 +479,7 @@ static void if_statement() {
     if (!check(TK_LBRACE)) {
         error("Expected '{' after 'if' condition.");
     }
+
 
     int then_jump = emit_jump(OP_JUMP_IF_FALSE);
 
@@ -578,6 +583,8 @@ static void statement() {
         if_statement();
     } else if (match(TK_WHILE)) {
         while_statement();
+    } else if (match(TK_FOR)) {
+        for_statement();
     } else if (match(TK_LBRACE)) {
         begin_scope();
         block();

@@ -150,8 +150,8 @@ static TokenType identifier_type() {
             return check_keyword(1, 3, "ull", TK_NIL);
         case 'o':
             return check_keyword(1, 1, "r", TK_OR);
-        case 'p':
-            return check_keyword(1, 6, "rintln", TK_PRINTLN);
+        case 'b':
+            return check_keyword(1, 10, "eaverspeak", TK_PRINTLN);
         case 'r':
             return check_keyword(1, 5, "eturn", TK_RETURN);
         case 's':
