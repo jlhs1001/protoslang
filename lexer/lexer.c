@@ -259,14 +259,37 @@ Token lex_token() {
                     match('.') ? TK_RANGE : TK_DOT
             );
         case '-':
+            if (match('-')) {
+                return make_token(TK_MINUS_MINUS);
+            } else if (match('=')) {
+                return make_token(TK_MINUS_EQUAL);
+            }
             return make_token(TK_MINUS);
         case '+':
+            if (match('+')) {
+                return make_token(TK_PLUS_PLUS);
+            } else if (match('=')) {
+                return make_token(TK_PLUS_EQUAL);
+            }
             return make_token(TK_PLUS);
         case '/':
+            if (match('/')) {
+                return make_token(TK_SLASH_SLASH);
+            } else if (match('=')) {
+                return make_token(TK_SLASH_EQUAL);
+            }
             return make_token(TK_SLASH);
         case '*':
-            return make_token(TK_STAR);
+            if (match('=')) {
+                return make_token(TK_STAR_EQUAL);
+            }
 
+            return make_token(TK_STAR);
+        case '%':
+            if (match('=')) {
+                return make_token(TK_PERCENT_EQUAL);
+            }
+            return make_token(TK_PERCENT);
             // lex multi-character tokens
         case '!':
             return make_token(

@@ -32,30 +32,35 @@ cmake --build .
 
 ## Expressions
 
-- [ ] Arithmetic
+- [x] Arithmetic
   - [x] `+`
   - [x] `-`
   - [x] `*`
   - [x] `/`
-  - [ ] `%`
-- [ ] Comparison
+  - [x] `%`
+- [x] Comparison
   - [x] `<`
   - [x] `>`
   - [x] `<=`
   - [x] `>=`
   - [x] `==`
-  - [ ] `!=`
-- [ ] Logical
-  - [ ] `&&`
-  - [ ] `||`
+  - [x] `!=`
+- [x] Logical
+  - [x] `&&`
+  - [x] `||`
   - [x] `!`
-- [ ] Assignment
+- [x] Assignment
   - [x] `=`
-  - [ ] `+=`
-  - [ ] `-=`
-  - [ ] `*=`
-  - [ ] `/=`
-  - [ ] `%=`
+
+[//]: # (  - [ ] `+=`)
+
+[//]: # (  - [ ] `-=`)
+
+[//]: # (  - [ ] `*=`)
+
+[//]: # (  - [ ] `/=`)
+
+[//]: # (  - [ ] `%=`)
 
 ## Literal Values
 
@@ -71,12 +76,13 @@ cmake --build .
 
 ## Functions
 
-- [ ] Declaration
-- [ ] Arguments
+- [x] Declaration
+- [x] Arguments
 - [ ] Return
-- [ ] Call
+- [x] Call
 
 ## Control Flow
 
 - [x] If-else
-- [ ] For
+- [x] For-in (iterable)
+- [x] For-range

@@ -21,7 +21,7 @@ typedef struct {
 
 typedef enum {
     PREC_NONE,
-    PREC_ASSIGNMENT,  // =
+    PREC_ASSIGNMENT,  // =, +=, -=, *=, /=
     PREC_OR,          // or
     PREC_AND,         // and
     PREC_EQUALITY,    // == !=
@@ -259,6 +259,9 @@ static void binary(bool can_assign) {
         case TK_SLASH:
             emit_byte(OP_DIVIDE);
             break;
+        case TK_PERCENT:
+            emit_byte(OP_MODULO);
+            break;
         case TK_RANGE:
             emit_byte(OP_BUILD_RANGE);
             break;
@@ -443,6 +446,8 @@ static void and_(bool can_assign) {
 }
 
 static void loop_declaration() {
+    // For c-style for loops, which are not currently supported
+    // and probably won't be, but this is here regardless.
     uint8_t global = parse_variable("Expected variable name.");
 
     if (match(TK_EQUAL)) {
@@ -922,6 +927,19 @@ static void string(bool can_assign) {
     )));
 }
 
+static bool is_assignment_token(TokenType type) {
+    switch (type) {
+        case TK_EQUAL:
+        case TK_PLUS_EQUAL:
+        case TK_MINUS_EQUAL:
+        case TK_STAR_EQUAL:
+        case TK_SLASH_EQUAL:
+            return true;
+        default:
+            return false;
+    }
+}
+
 static void named_variable(Token name, bool can_assign) {
     uint8_t get_op, set_op;
     int arg = resolve_local(current, &name);
@@ -937,7 +955,7 @@ static void named_variable(Token name, bool can_assign) {
         set_op = OP_SET_GLOBAL;
     }
 
-    if (can_assign && match(TK_EQUAL)) {
+    if (can_assign && is_assignment_token(parser.current.type)) {
         expression();
         emit_byte_pair(set_op, (uint8_t) arg);
     } else {
@@ -983,9 +1001,15 @@ ParseRule rules[] = {
         [TK_SEMICOLON]      = {NULL, NULL, PREC_NONE},
         [TK_SLASH]          = {NULL, binary, PREC_FACTOR},
         [TK_STAR]           = {NULL, binary, PREC_FACTOR},
+        [TK_PERCENT]        = {NULL, binary, PREC_FACTOR},
         [TK_BANG]           = {unary, NULL, PREC_NONE},
-        [TK_BANG_EQUAL]     = {NULL, binary, PREC_NONE},
+        [TK_BANG_EQUAL]     = {NULL, binary, PREC_EQUALITY},
         [TK_EQUAL]          = {NULL, NULL, PREC_NONE},
+        [TK_PLUS_EQUAL]     = {NULL, NULL, PREC_NONE},
+        [TK_MINUS_EQUAL]    = {NULL, NULL, PREC_NONE},
+        [TK_STAR_EQUAL]     = {NULL, NULL, PREC_NONE},
+        [TK_SLASH_EQUAL]    = {NULL, NULL, PREC_NONE},
+        [TK_PERCENT_EQUAL]  = {NULL, NULL, PREC_NONE},
         [TK_EQUAL_EQUAL]    = {NULL, binary, PREC_EQUALITY},
         [TK_GREATER]        = {NULL, binary, PREC_COMPARISON},
         [TK_GREATER_EQUAL]  = {NULL, binary, PREC_COMPARISON},
@@ -994,7 +1018,7 @@ ParseRule rules[] = {
         [TK_IDENTIFIER]     = {variable, NULL, PREC_NONE},
         [TK_STRING]         = {string, NULL, PREC_NONE},
         [TK_NUMBER]         = {number, NULL, PREC_NONE},
-        [TK_AND]            = {NULL, and_, PREC_NONE},
+        [TK_AND]            = {NULL, and_, PREC_AND},
         [TK_CLASS]          = {NULL, NULL, PREC_NONE},
         [TK_ELSE]           = {NULL, NULL, PREC_NONE},
         [TK_FALSE]          = {literal, NULL, PREC_NONE},
@@ -1002,7 +1026,7 @@ ParseRule rules[] = {
         [TK_FOR]            = {NULL, NULL, PREC_NONE},
         [TK_IF]             = {NULL, NULL, PREC_NONE},
         [TK_NIL]            = {literal, NULL, PREC_NONE}, // TODO: Rename to TK_NULL
-        [TK_OR]             = {NULL, or_, PREC_NONE},
+        [TK_OR]             = {NULL, or_, PREC_OR},
         [TK_PRINTLN]        = {NULL, NULL, PREC_NONE},
         [TK_RETURN]         = {NULL, NULL, PREC_NONE},
         [TK_SUPER]          = {NULL, NULL, PREC_NONE},

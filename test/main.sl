@@ -15,20 +15,26 @@
 
 //println(3 + 3);
 
-let grocery_list = [
-    "beavers",
-    "bagels",
-    "bacon",
-    "butter",
-    "bananas",
-];
+//let grocery_list = [
+//    "beavers",
+//    "bagels",
+//    "bacon",
+//    "butter",
+//    "bananas",
+//];
 
-for let item in grocery_list {
-    println("item: " + item);
+if 2 <= 2 {
+    println(8 % 2);
 }
 
+let x = 0;
 
-
-for let i in 0..9 {
-    println(i);
-}
+//for let item in grocery_list {
+//    println("item: " + item);
+//}
+//
+//
+//
+//for let i in 0..9 {
+//    println(i);
+//}

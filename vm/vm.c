@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdarg.h>
 #include <string.h>
+#include <math.h>
 
 #include "common.h"
 #include "value.h"
@@ -157,6 +158,24 @@ static InterpretResult run() {
         push(value_type(a op b)); \
     } while (false)
 
+#define BINARY_OP_INT(value_type, op) \
+    do { \
+        if (!IS_NUMBER(peek(0)) || !IS_NUMBER(peek(1))) { \
+            runtime_error("Invalid operands."); \
+            return INTERPRET_RUNTIME_ERROR; \
+        }                             \
+        int b = (int) AS_NUMBER(pop()); \
+        int a = (int) AS_NUMBER(pop());                   \
+                                      \
+        int x = b, y = a;             \
+        double tmp1 = b - x, tmp2 = a - y;                \
+        if (tmp1 > 0 || tmp2 > 0) {   \
+            runtime_error("Modulus operator does not support float values."); \
+            return INTERPRET_RUNTIME_ERROR;                          \
+        }\
+        push(value_type(a op b)); \
+    } while (false)
+
     for (;;) {
 #ifdef DEBUG_TRACE_EXECUTION
         // Print the stack.
@@ -264,6 +283,10 @@ static InterpretResult run() {
                 break;
             case OP_DIVIDE:
                 BINARY_OP(NUMBER_VAL, /);
+                break;
+            case OP_MODULO:
+                // fail if the operands are not integers
+                BINARY_OP_INT(NUMBER_VAL, %);
                 break;
             case OP_NOT:
                 push(BOOL_VAL(is_falsey(pop())));
