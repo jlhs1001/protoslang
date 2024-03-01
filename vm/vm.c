@@ -23,9 +23,20 @@ static void runtime_error(const char *format, ...) {
     va_end(args);
     fputs("\n", stderr);
 
-    size_t instruction = vm.ip - vm.module->code;
-    int line = vm.module->lines[instruction];
-    fprintf(stderr, "[line %d] in script\n", line);
+    // stack trace
+    for (int i = vm.frame_count - 1; i >= 0; i--) {
+        CallFrame *frame = &vm.frames[i];
+        ObjFunction *function = frame->function;
+        // -1 because the IP is sitting on the next instruction to be executed
+        size_t instruction = frame->ip - function->module.code - 1;
+        fprintf(stderr, "[line %d] in ", function->module.lines[instruction]);
+        if (function->name == NULL) {
+            fprintf(stderr, "script\n");
+        } else {
+            fprintf(stderr, "%s()\n", function->name->chars);
+        }
+    }
+
     reset_stack();
 }
 
@@ -54,6 +65,39 @@ Value pop() {
     // Decrement the stack top pointer, then return the value that it points to.
     vm.stack_top--;
     return *vm.stack_top;
+}
+
+static bool call(ObjFunction *function, int arg_count) {
+    if (arg_count != function->arity) {
+        runtime_error("Expected %d arguments but got %d.", function->arity, arg_count);
+        return false;
+    }
+
+    if (vm.frame_count == FRAMES_MAX) {
+        runtime_error("Stack overflow.");
+        return false;
+    }
+
+    CallFrame *frame = &vm.frames[vm.frame_count++];
+    frame->function = function;
+    frame->ip = function->module.code;
+    frame->slots = vm.stack_top - arg_count - 1;
+
+    return true;
+}
+
+static bool call_value(Value callee, int arg_count) {
+    if (IS_OBJ(callee)) {
+        switch (OBJ_TYPE(callee)) {
+            case OBJ_FUNCTION:
+                return call(AS_FUNCTION(callee), arg_count);
+            default:
+                break; // Non-callable object type.
+        }
+    }
+
+    runtime_error("Can only call functions and classes.");
+    return false;
 }
 
 static Value peek(int distance) {
@@ -89,12 +133,18 @@ static void concatenate() {
 }
 
 static InterpretResult run() {
-#define READ_BYTE() (*vm.ip++)
+    CallFrame *frame = &vm.frames[vm.frame_count - 1];
+
+#define READ_BYTE() (*frame->ip++)
+
 // grabs the next two bytes from the chunk and builds a 16-bit unsigned integer from them.
 // TODO: When the VM is ported to a wider bit system, this will need to be increased.
-#define READ_SHORT() (vm.ip += 2, (uint16_t)((vm.ip[-2] << 8) | vm.ip[-1]))
-#define READ_CONSTANT() (vm.module->constants.values[READ_BYTE()])
+#define READ_SHORT() (frame->ip += 2, (uint16_t)((frame->ip[-2] << 8) | frame->ip[-1]))
+
+#define READ_CONSTANT() (frame->function->module.constants.values[READ_BYTE()])
+
 #define READ_STRING() (AS_STRING(READ_CONSTANT()))
+
 // TODO: Make the invalid operand runtime error more descriptive.
 #define BINARY_OP(value_type, op) \
     do { \
@@ -119,7 +169,8 @@ static InterpretResult run() {
         }
         printf("\n");
         // Disassemble the current instruction.
-        disassemble_instruction(vm.module, (int) (vm.ip - vm.module->code));
+        disassemble_instruction(&frame->function->module,
+                                (int) (frame->ip - frame->function->module.code));
 #endif
 
         uint8_t instruction;
@@ -144,12 +195,12 @@ static InterpretResult run() {
                 break;
             case OP_GET_LOCAL: {
                 uint8_t slot = READ_BYTE();
-                push(vm.stack[slot]);
+                push(frame->slots[slot]);
                 break;
             }
             case OP_SET_LOCAL: {
                 uint8_t slot = READ_BYTE();
-                vm.stack[slot] = peek(0);
+                frame->slots[slot] = peek(0);
                 break;
             }
             case OP_GET_GLOBAL: {
@@ -231,23 +282,23 @@ static InterpretResult run() {
                 break;
             case OP_JUMP: {
                 uint16_t offset = READ_SHORT();
-                vm.ip += offset;
+                frame->ip += offset;
                 break;
             }
             case OP_JUMP_IF_FALSE: {
                 uint16_t offset = READ_SHORT();
-                if (is_falsey(peek(0))) vm.ip += offset;
+                if (is_falsey(peek(0))) frame->ip += offset;
                 break;
             }
             case OP_JUMP_IF_TRUE: {
                 uint16_t offset = READ_SHORT();
-                if (!is_falsey(peek(0))) vm.ip += offset;
+                if (!is_falsey(peek(0))) frame->ip += offset;
                 break;
             }
             case OP_LOOP: {
                 // the only difference between this and OP_JUMP is that the offset is negative
                 uint16_t offset = READ_SHORT();
-                vm.ip -= offset;
+                frame->ip -= offset;
                 break;
             }
             case OP_BUILD_LIST: {
@@ -317,6 +368,19 @@ static InterpretResult run() {
 
                 result = read_list(list, index);
                 push(result);
+                break;
+            }
+            case OP_GET_LIST_LENGTH: {
+                // stack before: [list] and after: [length]
+                Value stack_list = pop();
+
+                if (!IS_LIST(stack_list)) {
+                    runtime_error("Cannot get length of a non-list.");
+                    return INTERPRET_RUNTIME_ERROR;
+                }
+
+                ObjList *list = AS_LIST(stack_list);
+                push(NUMBER_VAL(list->count));
                 break;
             }
             case OP_STORE_LIST: {
@@ -392,9 +456,38 @@ static InterpretResult run() {
                 push(NUMBER_VAL(incrementedValue)); // Push the incremented value back onto the stack
                 break;
             }
+            case OP_GET_REGISTER: {
+                // stack before: [] and after: [value]
+                push(vm.reg_0);
+                break;
+            }
+            case OP_SET_REGISTER: {
+                // stack before: [value] and after: []
+                vm.reg_0 = pop();
+                break;
+            }
+            case OP_CALL: {
+                int arg_count = READ_BYTE();
+                if (!call_value(peek(arg_count), arg_count)) {
+                    return INTERPRET_RUNTIME_ERROR;
+                }
+                frame = &vm.frames[vm.frame_count - 1];
+                break;
+            }
             case OP_RETURN: {
+                Value result = pop();
+                vm.frame_count--;
+                if (vm.frame_count == 0) {
+                    pop();
+                    return INTERPRET_OK;
+                }
+
+                vm.stack_top = frame->slots;
+                push(result);
+                frame = &vm.frames[vm.frame_count - 1];
+                break;
                 // exit interpreter
-                return INTERPRET_OK;
+//                return INTERPRET_OK;
             }
             case OP_DUPLICATE: {
                 // stack before: [value] and after: [value, value]
@@ -412,19 +505,11 @@ static InterpretResult run() {
 }
 
 InterpretResult interpret(const char *source) {
-    Module module;
-    initialize_module(&module);
+    ObjFunction *function = compile(source);
+    if (function == NULL) return INTERPRET_COMPILE_ERROR;
 
-    if (!compile(source, &module)) {
-        free_module(&module);
-        return INTERPRET_COMPILE_ERROR;
-    }
+    push(OBJ_VAL(function));
+    call(function, 0);
 
-    vm.module = &module;
-    vm.ip = vm.module->code;
-
-    InterpretResult result = run();
-
-    free_module(&module);
-    return result;
+    return run();
 }

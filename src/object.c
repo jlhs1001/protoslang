@@ -23,6 +23,14 @@ static Obj *allocate_object(size_t size, ObjType type) {
     return object;
 }
 
+ObjFunction *new_function() {
+    ObjFunction *function = ALLOCATE_OBJ(ObjFunction, OBJ_FUNCTION);
+    function->arity = 0;
+    function->name = NULL;
+    initialize_module(&function->module);
+    return function;
+}
+
 ObjRange *allocate_range(double start, double end) {
     ObjRange *range = ALLOCATE_OBJ(ObjRange, OBJ_RANGE);
     range->start = start;
@@ -132,6 +140,9 @@ ObjString *copy_string(const char *chars, int length) {
 
 void print_object(Value value) {
     switch (OBJ_TYPE(value)) {
+        case OBJ_FUNCTION:
+            print_function(AS_FUNCTION(value));
+            break;
         case OBJ_STRING:
             printf("%s", AS_CSTRING(value));
             break;
@@ -142,6 +153,15 @@ void print_object(Value value) {
             print_range(AS_RANGE(value));
             break;
     }
+}
+
+void print_function(ObjFunction *function) {
+    if (function->name == NULL) {
+        printf("<script>");
+        return;
+    }
+
+    printf("<fn %s>", function->name->chars);
 }
 
 void print_list(ObjList* list) {

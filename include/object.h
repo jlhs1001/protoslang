@@ -3,19 +3,23 @@
 
 #include "common.h"
 #include "value.h"
+#include "module.h"
 
 #define OBJ_TYPE(value) (AS_OBJ(value)->type)
 // this macro facilitates safe casting of an object to a string
 #define IS_STRING(value) is_obj_type(value, OBJ_STRING)
 #define IS_LIST(value) is_obj_type(value, OBJ_LIST)
 #define IS_RANGE(value) is_obj_type(value, OBJ_RANGE)
+#define IS_FUNCTION(value) is_obj_type(value, OBJ_FUNCTION)
 
 #define AS_STRING(value) ((ObjString*)AS_OBJ(value))
 #define AS_CSTRING(value) (((ObjString*)AS_OBJ(value))->chars)
 #define AS_LIST(value) ((ObjList*)AS_OBJ(value))
 #define AS_RANGE(value) ((ObjRange*)AS_OBJ(value))
+#define AS_FUNCTION(value) ((ObjFunction*)AS_OBJ(value))
 
 typedef enum {
+    OBJ_FUNCTION,
     OBJ_STRING,
     OBJ_LIST,
     OBJ_RANGE,
@@ -48,11 +52,20 @@ typedef struct {
     double end; // End of the range
 } ObjRange;
 
+typedef struct {
+    Obj obj;
+    int arity;
+    Module module;
+    ObjString *name;
+} ObjFunction;
+
+ObjFunction *new_function();
 ObjString *take_string(char *chars, int length);
 ObjString *copy_string(const char *chars, int length);
 void print_object(Value value);
 void print_list(ObjList* list);
 void print_range(ObjRange* range);
+void print_function(ObjFunction* function);
 
 // list operations
 ObjList *allocate_list();

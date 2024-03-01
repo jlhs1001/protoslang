@@ -76,6 +76,8 @@ int disassemble_instruction(Module* module, uint32_t offset) {
             return jump_instruction("jmp_tru", 1, module, (int)offset);
         case OP_LOOP:
             return jump_instruction("loop", -1, module, (int)offset);
+        case OP_CALL:
+            return constant_instruction("call", module, (int)offset);
         case OP_RETURN:
             return simple_instruction("return", (int)offset);
         case OP_CONSTANT:
@@ -126,6 +128,8 @@ int disassemble_instruction(Module* module, uint32_t offset) {
             return simple_instruction("str_lst", (int)offset);
         case OP_BUILD_RANGE:
             return simple_instruction("bld_rng", (int)offset);
+        case OP_GET_LIST_LENGTH:
+            return simple_instruction("len_lst", (int)offset);
         case OP_INCREMENT:
             return simple_instruction("inc", (int)offset);
         case OP_RANGE_START:

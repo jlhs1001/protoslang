@@ -24,6 +24,23 @@ static void free_object(Obj *object) {
             FREE(ObjString, string);
             break;
         }
+        case OBJ_LIST: {
+            ObjList *list = (ObjList*)object;
+            FREE_ARRAY(Value, list->items, list->capacity);
+            FREE(ObjList, list);
+            break;
+        }
+        case OBJ_RANGE: {
+            ObjRange *range = (ObjRange*)object;
+            FREE(ObjRange, range);
+            break;
+        }
+        case OBJ_FUNCTION: {
+            ObjFunction *function = (ObjFunction*)object;
+            free_module(&function->module);
+            FREE(ObjFunction, object);
+            break;
+        }
     }
 }
 

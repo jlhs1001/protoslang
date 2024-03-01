@@ -1,49 +1,34 @@
-//println("Hello, World!");
-
-//let a = 1;
-//while a < 10 {
-//    println(a);
-//    let some_string = "Hello, " + "world!";
+//println("hello world");
 //
+//let some_string = "beaver beaverous";
 //
+//println(some_string);
 //
-//    println(some_string);
-//    a = a + 1;
-//}
-
-
+//let some_list = [
+//    "hello world",
+//    123,
+//    34455.65,
+//    true,
+//];
 //
-//if 1 < 2 {
-//    println("1 is less than 2");
-//} else {
-//    println("1 is not less than 2");
-//}
+//println(some_list);
 
-//let abc = 1;
-//abc = "hello world";
-//println(abc);
+//println(3 + 3);
 
-//let x = ["abc", "def"];
-//println(x[0]);
+let grocery_list = [
+    "beavers",
+    "bagels",
+    "bacon",
+    "butter",
+    "bananas",
+];
 
-//let x = ["abc", "def", 1];
-//println(x[1]);
-//
-//println(0..10);
-
-for let i in 4..10 {
-    println(i);
+for let item in grocery_list {
+    println("item: " + item);
 }
 
-//let x = 0;
-//while x < 10 {
-//    x = x + 1;
-//}
 
-//let x = "def";
-//println(x);
 
-//{
-//    let x = 10;
-//    println(x);
-//}
+for let i in 0..9 {
+    println(i);
+}

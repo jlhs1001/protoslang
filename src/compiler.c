@@ -49,7 +49,15 @@ typedef struct {
     int depth;
 } Local;
 
-typedef struct {
+typedef enum {
+    TYPE_FUNCTION,
+    TYPE_SCRIPT
+} FunctionType;
+
+typedef struct Compiler {
+    struct Compiler *enclosing;
+    ObjFunction *function;
+    FunctionType type;
     Local locals[UINT8_COUNT];
     int local_count;
     int scope_depth;
@@ -60,7 +68,7 @@ Compiler *current = NULL;
 Module *compiling_module;
 
 static Module *current_module() {
-    return compiling_module;
+    return &current->function->module;
 }
 
 static void error_at(Token *token, const char *message) {
@@ -184,13 +192,18 @@ static ParseRule *get_rule(TokenType type);
 
 static void parse_precedence(Precedence precedence);
 
-static void end_compiler() {
+static ObjFunction *end_compiler() {
     emit_return();
+    ObjFunction *function = current->function;
 #ifdef DEBUG_PRINT_CODE
     if (!parser.had_error) {
-        disassemble_module(current_module(), "code");
+        disassemble_module(current_module(), function->name != NULL
+            ? function->name->chars : "<script>");
     }
 #endif
+
+    current = current->enclosing;
+    return function;
 }
 
 static void begin_scope() {
@@ -252,6 +265,26 @@ static void binary(bool can_assign) {
         default:
             return; // unreachable
     }
+}
+
+static uint8_t argument_list() {
+    uint8_t arg_count = 0;
+    if (!check(TK_RPAREN)) {
+        do {
+            expression();
+            if (arg_count == UINT8_COUNT) {
+                error("Cannot have more than 255 arguments.");
+            }
+            arg_count++;
+        } while (match(TK_COMMA));
+    }
+    consume(TK_RPAREN, "Expected ')' after arguments.");
+    return arg_count;
+}
+
+static void call(bool can_assign) {
+    uint8_t arg_count = argument_list();
+    emit_byte_pair(OP_CALL, arg_count);
 }
 
 static void literal(bool can_assign) {
@@ -372,6 +405,7 @@ static uint8_t parse_variable(const char *error_message) {
 }
 
 static void mark_initialized() {
+    if (current->scope_depth == 0) return;
     current->locals[current->local_count - 1].depth = current->scope_depth;
 }
 
@@ -419,6 +453,63 @@ static void loop_declaration() {
         emit_byte(OP_NIL);
     }
 
+    define_variable(global);
+}
+
+static void initialize_compiler(Compiler *compiler, FunctionType type) {
+    compiler->enclosing = current;
+    compiler->function = NULL;
+    compiler->type = type;
+    compiler->local_count = 0;
+    compiler->scope_depth = 0;
+    compiler->function = new_function();
+    current = compiler;
+    if (type != TYPE_SCRIPT) {
+        current->function->name = copy_string(parser.previous.start, parser.previous.length);
+    }
+
+    Local *local = &current->locals[current->local_count++];
+    local->depth = 0;
+    local->name.start = "";
+    local->name.length = 0;
+}
+
+static void function(FunctionType type) {
+    // initialize a compilation context for the function
+    Compiler compiler;
+
+    initialize_compiler(&compiler, type);
+
+    begin_scope();
+
+    // parse the function parameters
+    consume(TK_LPAREN, "Expected '(' after function name.");
+    if (!check(TK_RPAREN)) {
+        do {
+            current->function->arity++;
+            if (current->function->arity > 255) {
+                error("Cannot have more than 255 parameters.");
+            }
+
+            uint8_t constant = parse_variable("Expected parameter name.");
+            define_variable(constant);
+        } while (match(TK_COMMA));
+    }
+    consume(TK_RPAREN, "Expected ')' after function parameters.");
+    consume(TK_LBRACE, "Expected '{' before function body.");
+
+    // parse the function body
+    block();
+
+    // emit the function object
+    ObjFunction *function = end_compiler();
+    emit_byte_pair(OP_CONSTANT, make_constant(OBJ_VAL(function)));
+}
+
+static void function_declaration() {
+    uint8_t global = parse_variable("Expected function name.");
+    mark_initialized();
+    function(TYPE_FUNCTION);
     define_variable(global);
 }
 
@@ -482,66 +573,156 @@ static void expression_statement() {
     emit_byte(OP_POP);
 }
 
+static void list(bool can_assign) {
+    int item_count = 0;
+    if (!check(TK_RBRACKET)) {
+        do {
+            if (check(TK_RBRACKET)) {
+                // trailing comma handling
+                break;
+            }
+
+            parse_precedence(PREC_OR);
+
+            if (item_count == UINT8_COUNT) {
+                error("Cannot have more than 255 items in a list.");
+            }
+
+            item_count++;
+        } while (match(TK_COMMA));
+    }
+
+    consume(TK_RBRACKET, "Expected ']' after list.");
+
+    emit_byte(OP_BUILD_LIST);
+    emit_byte(item_count);
+}
+
 void for_in_statement() {
+    // TODO: CURRENTLY VARIABLE NAMES ARE IN GLOBAL SCOPE. FIX THIS.
+
     consume(TK_LET, "Expect variable declaration in for-in loop.");
     uint8_t variableIndex = parse_variable("Expect variable name.");
     consume(TK_IN, "Expect 'in' after variable declaration.");
 
-    // Evaluate the range
-    expression();
+    // expect a range to follow
+    if (check(TK_NUMBER)) {
+        // Evaluate the range
+        expression();
 
-    // Set up the loop variable with the start of the range
-    emit_byte(OP_RANGE_START);
-    define_variable(variableIndex);
+        // Set up the loop variable with the start of the range
+        emit_byte(OP_RANGE_START);
+        define_variable(variableIndex);
 
-//    // create a temporary variable to store the range end
-//    Token name = {
-//            .type = TK_IDENTIFIER,
-//            .start = "end",
-//            .length = 3,
-//            -1,
-//    };
-//
-//    add_local(name);
+        // Mark the start of the loop for later looping back
+        int loop_start = current_module()->count;
 
-//    resolve_local(current, &name);
+        // Loop body
+        statement();
 
-    // Mark the start of the loop for later looping back
-    int loopStart = current_module()->count;
+        emit_byte(OP_RANGE_END);
 
-    // Loop body
-    statement();
+        // Increment the loop variable within the bounds of the range
+        emit_byte_pair(OP_GET_GLOBAL, variableIndex);  // Get the range end
 
-    emit_byte(OP_RANGE_END);
+        // Compare the incremented index (now below the range end on the stack) to the range end
+        emit_byte(OP_LESS_EQUAL);  // Assumes true if current index < range end
 
-    // Increment the loop variable within the bounds of the range
-    emit_byte_pair(OP_GET_GLOBAL, variableIndex);  // Get the range end
+        // Conditionally jump based on the comparison
+        int exit_jump = emit_jump(OP_JUMP_IF_TRUE);  // Jump out of the loop if current index >= range end
 
-    // Compare the incremented index (now below the range end on the stack) to the range end
-    emit_byte(OP_LESS_EQUAL);  // Assumes true if current index < range end
+        // remove result of branch condition
+        emit_byte(OP_POP);
 
-    // Conditionally jump based on the comparison
-    int exitJump = emit_jump(OP_JUMP_IF_TRUE);  // Jump out of the loop if current index >= range end
+        emit_byte_pair(OP_GET_GLOBAL, variableIndex);  // Get the range end
 
-    // remove result of branch condition
-    emit_byte(OP_POP);
+        // Increment the loop variable
+        emit_byte(OP_INCREMENT_RANGE);
 
-    emit_byte_pair(OP_GET_GLOBAL, variableIndex);  // Get the range end
-
-    // Increment the loop variable
-    emit_byte(OP_INCREMENT_RANGE);
-
-    // Update the loop variable 'i' with the incremented value
+        // Update the loop variable 'i' with the incremented value
 //    emit_byte(OP_DUPLICATE);  // Duplicate index again to update 'i' and keep a copy for the loop condition
-    define_variable(variableIndex);
+        define_variable(variableIndex);
 
-    // Loop back to start if not at the end
-    emit_loop(loopStart);
+        // Loop back to start if not at the end
+        emit_loop(loop_start);
 
-    // Patch the exit jump to jump here if the comparison indicates the end of the range has been reached
-    patch_jump(exitJump);
+        // Patch the exit jump to jump here if the comparison indicates the end of the range has been reached
+        patch_jump(exit_jump);
 
-    // Optional: clean up the stack if necessary
+        // Optional: clean up the stack if necessary
+
+        // Hypothetically this should return the for loop to zero stack effect
+        // remove result of branch condition
+        emit_byte(OP_POP);
+        // remove range
+        emit_byte(OP_POP);
+    } else if (check(TK_LBRACKET) || check(TK_IDENTIFIER)) {
+        // Evaluate the list
+        expression();
+
+        // TODO: EXTREMELY HACKY WARNING WARNING ABANDON SHIP
+        //  TODO: THE CURRENT REGISTER-BASED IMPLEMENTATION CANNOT HANDLE NESTED LOOPS
+        // set index to 0
+        emit_byte_pair(OP_CONSTANT, make_constant(NUMBER_VAL(0)));
+
+        // store the index in the register
+        emit_byte(OP_SET_REGISTER);
+
+        emit_byte(OP_FALSE);
+
+        // mark the start of the loop for later looping back
+        int loop_start = current_module()->count;
+
+        // remove false value
+        emit_byte(OP_POP);
+
+        // duplicate the list to find the list length
+        emit_byte(OP_DUPLICATE);
+
+        // get the index from the register
+        emit_byte(OP_GET_REGISTER);
+
+        // get the value at the index
+        emit_byte(OP_INDEX_LIST);
+
+        // store that value in the loop variable
+        define_variable(variableIndex);
+
+        // parse the loop body
+        statement();
+
+        // duplicate the list
+        emit_byte(OP_DUPLICATE);
+
+        // get the length of the list
+        emit_byte(OP_GET_LIST_LENGTH);
+
+        // get the index from the register
+        emit_byte(OP_GET_REGISTER);
+
+        // increment the index
+        emit_byte(OP_INCREMENT);
+
+        // duplicate the index
+        emit_byte(OP_DUPLICATE);
+
+        // store the index in the register
+        emit_byte(OP_SET_REGISTER);
+
+        // Compare the incremented index (now below the range end on the stack) to the range end
+        emit_byte(OP_LESS_EQUAL);  // Assumes true if current index < range end
+
+        // Conditionally jump based on the comparison
+        int exit_jump = emit_jump(OP_JUMP_IF_TRUE);  // Jump out of the loop if current index >= range end
+
+        // Loop back to start if not at the end
+        emit_loop(loop_start);
+
+        // Patch the exit jump to jump here if the comparison indicates the end of the range has been reached
+        patch_jump(exit_jump);
+    } else {
+        error("Expect range or list after 'in'.");
+    }
 }
 
 
@@ -669,31 +850,6 @@ static void statement() {
     }
 }
 
-static void list(bool can_assign) {
-    int item_count = 0;
-    if (!check(TK_RBRACKET)) {
-        do {
-            if (check(TK_RBRACKET)) {
-                // trailing comma handling
-                break;
-            }
-
-            parse_precedence(PREC_OR);
-
-            if (item_count == UINT8_COUNT) {
-                error("Cannot have more than 255 items in a list.");
-            }
-
-            item_count++;
-        } while (match(TK_COMMA));
-    }
-
-    consume(TK_RBRACKET, "Expected ']' after list.");
-
-    emit_byte(OP_BUILD_LIST);
-    emit_byte(item_count);
-}
-
 static void integer(bool can_assign) {
     long value = strtol(parser.previous.start, NULL, 10);
     emit_constant(NUMBER_VAL(value));
@@ -722,7 +878,9 @@ static void subscript(bool can_assign) {
 }
 
 static void declaration() {
-    if (match(TK_LET)) {
+    if (match(TK_FN)) {
+        function_declaration();
+    } else if (match(TK_LET)) {
         // variable declaration handling
         variable_declaration();
     } else {
@@ -738,12 +896,6 @@ static void declaration() {
 static void grouping(bool can_assign) {
     expression();
     consume(TK_RPAREN, "Expected ')' after expression.");
-}
-
-static void initialize_compiler(Compiler *compiler) {
-    compiler->local_count = 0;
-    compiler->scope_depth = 0;
-    current = compiler;
 }
 
 static void number(bool can_assign) {
@@ -817,7 +969,7 @@ static void unary(bool can_assign) {
 }
 
 ParseRule rules[] = {
-        [TK_LPAREN]         = {grouping, NULL, PREC_NONE},
+        [TK_LPAREN]         = {grouping, call, PREC_CALL},
         [TK_RBRACE]         = {NULL, NULL, PREC_NONE},
         [TK_LBRACE]         = {NULL, NULL, PREC_NONE},
         [TK_RPAREN]         = {NULL, NULL, PREC_NONE},
@@ -866,14 +1018,14 @@ static ParseRule *get_rule(TokenType type) {
     return &rules[type];
 }
 
-bool compile(const char *source, Module *module) {
+ObjFunction *compile(const char *source) {
     initialize_lexer(source);
 
     // initialize the compiler
     Compiler compiler;
-    initialize_compiler(&compiler);
+    initialize_compiler(&compiler, TYPE_SCRIPT);
 
-    compiling_module = module;
+//    compiling_module = module;
 
     parser.had_error = false;
     parser.panic_mode = false;
@@ -884,6 +1036,6 @@ bool compile(const char *source, Module *module) {
         declaration();
     }
 
-    end_compiler();
-    return !parser.had_error;
+    ObjFunction *function = end_compiler();
+    return parser.had_error ? NULL : function;
 }

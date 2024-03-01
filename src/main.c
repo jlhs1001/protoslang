@@ -89,3 +89,24 @@ int main(int argc, const char* argv[]) {
     free_vm();
     return 0;
 }
+
+
+
+
+
+
+
+
+
+
+
+/*
+ * int: 0-255
+ *  - value: 8
+ *  - width: 8-bits
+ * bool: TRUE | FALSE
+ *  - value: TRUE
+ *  - width: 8-bits
+ *
+ * [[00001000][00000001]001101010101010101001011111100000111100011001110001110010100110000111000101010100101011010010]
+ */

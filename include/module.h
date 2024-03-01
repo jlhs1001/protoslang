@@ -26,10 +26,14 @@ typedef enum {
     OP_JUMP_IF_TRUE,
     OP_LOOP,
 
+    // function operations
+    OP_CALL,
+
     // list operations
     OP_BUILD_LIST,
     OP_INDEX_LIST,
     OP_STORE_LIST,
+    OP_GET_LIST_LENGTH,
 
     // range operations
     OP_BUILD_RANGE,
@@ -42,6 +46,10 @@ typedef enum {
 
     // type casting
 //    OP_TO_STRING,
+
+    // register operations
+    OP_GET_REGISTER,
+    OP_SET_REGISTER,
 
     OP_CONSTANT,
     OP_NIL,
